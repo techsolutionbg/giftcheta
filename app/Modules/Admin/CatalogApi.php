@@ -15,14 +15,14 @@ final class CatalogApi
     public function categories(Request $r): Response
     {
         if ($e = $this->auth->guard($r, 'categories.read', false)) return $e;
-        $rows = $this->db->query('SELECT c.*, (SELECT COUNT(*) FROM product_categories pc WHERE pc.category_id=c.id) AS product_count FROM categories c ORDER BY c.sort_order,c.name')->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $this->db->query('SELECT c.*, (SELECT COUNT(*) FROM product_categories pc JOIN products p ON p.id=pc.product_id WHERE pc.category_id=c.id AND p.deleted_at IS NULL) AS product_count FROM categories c ORDER BY c.sort_order,c.name')->fetchAll(PDO::FETCH_ASSOC);
         return Response::json(['data' => $rows]);
     }
 
     public function stats(Request $r): Response
     {
         if($e=$this->auth->guard($r,'products.read',false))return $e;
-        $products=$this->db->query("SELECT COUNT(*) total, SUM(status='active') active, SUM(status='draft') drafts FROM products")->fetch(PDO::FETCH_ASSOC);
+        $products=$this->db->query("SELECT COUNT(*) total, SUM(status='active') active, SUM(status='draft') drafts FROM products WHERE deleted_at IS NULL")->fetch(PDO::FETCH_ASSOC);
         $categories=(int)$this->db->query('SELECT COUNT(*) FROM categories')->fetchColumn();
         return Response::json(['data'=>['products'=>(int)$products['total'],'active'=>(int)$products['active'],'drafts'=>(int)$products['drafts'],'categories'=>$categories]]);
     }
@@ -111,13 +111,17 @@ final class CatalogApi
         $sorts = ['name'=>'p.name','sku'=>'p.sku','price'=>'p.price','status'=>'p.status','updated_at'=>'p.updated_at'];
         $sort = $sorts[(string) ($r->query['sort'] ?? 'updated_at')] ?? 'p.updated_at'; $direction = strtolower((string) ($r->query['direction'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
         $where = []; $args = [];
+        $trashOnly = ($r->query['trash'] ?? '') === 'only';
+        $where[] = $trashOnly ? 'p.deleted_at IS NOT NULL' : 'p.deleted_at IS NULL';
         $search = trim((string) ($r->query['search'] ?? ''));
         if ($search !== '') { $where[] = '(p.name LIKE ? OR p.sku LIKE ? OR p.slug LIKE ?)'; $like = '%' . $search . '%'; array_push($args,$like,$like,$like); }
         if (in_array($r->query['status'] ?? '', ['draft','active','archived'], true)) { $where[] = 'p.status=?'; $args[] = $r->query['status']; }
+        if (($r->query['promotion'] ?? '') === 'only') { $where[] = 'p.sale_price IS NOT NULL'; }
+        elseif (($r->query['promotion'] ?? '') === 'none') { $where[] = 'p.sale_price IS NULL'; }
         if (isset($r->query['category_id']) && ctype_digit((string) $r->query['category_id'])) { $where[] = 'EXISTS (SELECT 1 FROM product_categories pc WHERE pc.product_id=p.id AND pc.category_id=?)'; $args[] = (int) $r->query['category_id']; }
         $clause = $where ? ' WHERE ' . implode(' AND ', $where) : '';
         $count = $this->db->prepare('SELECT COUNT(*) FROM products p' . $clause); $count->execute($args); $total = (int) $count->fetchColumn();
-        $sql = 'SELECT p.id,p.name,p.slug,p.sku,p.price,p.sale_price,p.status,p.inventory_mode,p.stock_quantity,p.is_available,p.updated_at,(SELECT i.file_path FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) AS image_path,(SELECT GROUP_CONCAT(c.name ORDER BY c.sort_order SEPARATOR ", ") FROM product_categories pc JOIN categories c ON c.id=pc.category_id WHERE pc.product_id=p.id) AS categories FROM products p' . $clause . " ORDER BY {$sort} {$direction},p.id DESC LIMIT {$per} OFFSET " . (($page-1)*$per);
+        $sql = 'SELECT p.id,p.name,p.slug,p.sku,p.price,p.sale_price,p.status,p.inventory_mode,p.stock_quantity,p.is_available,p.updated_at,p.deleted_at,(SELECT i.file_path FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) AS image_path,(SELECT GROUP_CONCAT(c.name ORDER BY c.sort_order SEPARATOR ", ") FROM product_categories pc JOIN categories c ON c.id=pc.category_id WHERE pc.product_id=p.id) AS categories FROM products p' . $clause . " ORDER BY {$sort} {$direction},p.id DESC LIMIT {$per} OFFSET " . (($page-1)*$per);
         $q = $this->db->prepare($sql); $q->execute($args);
         return Response::json(['data' => $q->fetchAll(PDO::FETCH_ASSOC), 'meta' => ['page'=>$page,'per_page'=>$per,'total'=>$total,'pages'=>(int) ceil($total/$per)]]);
     }
@@ -196,9 +200,30 @@ final class CatalogApi
     {
         if($e=$this->auth->guard($r,'products.delete',true))return $e;
         $id=(int)($p['id']??0); if(!$this->existsId('products',$id))return $this->notFound();
-        $q=$this->db->prepare('SELECT COUNT(*) FROM product_stock_movements WHERE product_id=?');$q->execute([$id]);if((int)$q->fetchColumn()>0)return $this->error('product_has_stock_history','This product has inventory history. Archive it instead of deleting it.',409);
+        $q=$this->db->prepare('UPDATE products SET deleted_at=CURRENT_TIMESTAMP WHERE id=? AND deleted_at IS NULL');$q->execute([$id]);
+        if($q->rowCount()===0)return $this->error('product_already_trashed','Продуктът вече е в кошчето.',409);
+        return Response::json(['data'=>['trashed'=>true]]);
+    }
+
+    public function restoreProduct(Request $r,array $p): Response
+    {
+        if($e=$this->auth->guard($r,'products.delete',true))return $e;
+        $id=(int)($p['id']??0);$product=$this->find('products',$id);if(!$product)return $this->notFound();
+        if($product['deleted_at']===null)return $this->error('product_not_trashed','Продуктът не е в кошчето.',409);
+        $this->db->prepare('UPDATE products SET deleted_at=NULL WHERE id=?')->execute([$id]);
+        return Response::json(['data'=>['restored'=>true]]);
+    }
+
+    public function permanentlyDeleteProduct(Request $r,array $p): Response
+    {
+        if($e=$this->auth->guard($r,'products.delete',true))return $e;
+        $id=(int)($p['id']??0);$product=$this->find('products',$id);if(!$product)return $this->notFound();
+        if($product['deleted_at']===null)return $this->error('product_not_trashed','Първо преместете продукта в кошчето.',409);
+        $q=$this->db->prepare('SELECT COUNT(*) FROM product_stock_movements WHERE product_id=?');$q->execute([$id]);
+        if((int)$q->fetchColumn()>0)return $this->error('product_has_stock_history','Продуктът има история на наличностите и не може да бъде изтрит завинаги. Оставете го в кошчето.',409);
         $images=$this->rows('SELECT file_path,thumbnail_path FROM product_images WHERE product_id=?',[$id]);
-        $this->db->prepare('DELETE FROM products WHERE id=?')->execute([$id]); foreach($images as $image){$this->removePublicFile($image['file_path']);$this->removePublicFile($image['thumbnail_path']);}
+        $this->db->prepare('DELETE FROM products WHERE id=?')->execute([$id]);
+        foreach($images as $image){$this->removePublicFile($image['file_path']);$this->removePublicFile($image['thumbnail_path']);}
         return Response::json(['data'=>['deleted'=>true]]);
     }
 

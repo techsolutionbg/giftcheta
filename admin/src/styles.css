@@ -479,8 +479,9 @@ button[title]{position:relative}
 .upload-help-row .upload-zone{flex:1}
 @media(max-width:560px){.field-help-tooltip{max-width:calc(100vw - 24px);font-size:13px}}
 .product-editor-header{align-items:center;min-height:74px;padding:16px 25px}
-.product-editor-header>div{display:flex;align-items:center;min-height:34px}
+.product-editor-header>div{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-width:0}
 .product-editor-header h2{margin:0;line-height:1.25}
+.product-editor-header .product-editor-name{max-width:min(70vw,900px);margin:0;color:var(--muted);font-size:20px;font-weight:400;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .editor-tabs{align-items:center;min-height:0;padding-block:0;border-bottom:0;scrollbar-width:thin;scrollbar-color:var(--editor-tab-thumb) var(--editor-tab-track)}
 .editor-tabs::-webkit-scrollbar{display:block;height:7px}
 .editor-tabs button,.editor-tabs button.selected,.editor-tabs button:focus,.editor-tabs button:focus-visible{display:flex;align-items:center;justify-content:center;height:52px;margin:0;padding:0 16px;line-height:1.2;box-sizing:border-box;border:0;outline:0;box-shadow:none;text-decoration:none}
@@ -621,6 +622,19 @@ html:not(.dark) .topbar-actions>.icon-button:hover{background:#d1d5db;border-col
 .description-dialog-help{margin:0 0 14px;color:var(--muted);font-size:16px;line-height:1.5}
 .description-dialog-content .rich-text-editor{min-height:min(62vh,720px)}
 .description-dialog-content .rich-text-editor-content{min-height:min(58vh,660px)}
+.settings-page{max-width:1120px}
+.settings-section{overflow:hidden;margin-top:26px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:var(--shadow)}
+.settings-section-heading{display:flex;align-items:center;gap:13px;padding:20px 22px;border-bottom:1px solid var(--line)}
+.settings-section-icon{width:40px;height:40px;display:grid;place-items:center;flex:none;border-radius:10px;background:var(--paper);color:var(--muted)}
+.settings-section-heading h2{margin:0;font-size:18px;font-weight:500}
+.settings-section-heading p,.settings-row p{margin:5px 0 0;color:var(--muted);font-size:14px;line-height:1.5}
+.settings-list{padding:0 22px}
+.settings-row{min-height:94px;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:18px 0;border-bottom:1px solid var(--line)}
+.settings-row:last-child{border-bottom:0}
+.settings-row>div{min-width:0}
+.settings-row strong{font-size:16px;font-weight:500}
+.settings-row .dropdown{width:min(260px,40%);flex:none}
+@media(max-width:640px){.settings-list{padding:0 15px}.settings-section-heading{padding:17px 15px}.settings-row{align-items:flex-start;flex-direction:column;gap:12px}.settings-row .dropdown{width:100%}}
 .description-dialog-footer{min-height:70px;padding:12px 22px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:flex-end;gap:9px;background:var(--panel)}
 @media(max-width:560px){.description-dialog-header{padding:12px 14px}.description-dialog-heading h2{font-size:18px}.description-dialog-heading p{font-size:13px}.description-dialog-content{padding:14px}.description-dialog-footer{padding:10px 14px}.description-dialog-footer>*{flex:1}.description-dialog-content .rich-text-editor{min-height:58vh}.description-dialog-content .rich-text-editor-content{min-height:52vh}}
 .selection-control{position:relative;display:inline-flex;align-items:center;gap:10px;min-width:0;color:var(--ink);cursor:pointer;vertical-align:middle}
@@ -650,3 +664,9 @@ html:not(.dark) .topbar-actions>.icon-button:hover{background:#d1d5db;border-col
 .dark .selection-control-switch .selection-control-visual{border-color:#73777e;background:#303238}
 .dark .selection-control-switch .selection-control-visual:after{background:#c4c7ce}
 .dark .selection-control-switch input:checked+.selection-control-visual:after{background:#fff}
+.table-toolbar .bulk-action-button{background:#e5e7eb;border-color:#d1d5db;color:#374151;box-shadow:none}
+.table-toolbar .bulk-action-button:hover{background:#d1d5db;border-color:#9ca3af;color:#111827}
+.dark .table-toolbar .bulk-action-button{background:#2b2b2b;border-color:#424242;color:#e5e7eb}
+.dark .table-toolbar .bulk-action-button:hover{background:#3a3a3a;border-color:#555;color:#fff}
+.status-badge.trashed{background:#e5e7eb;color:#4b5563}
+.dark .status-badge.trashed{background:#303238;color:#c4c7ce}

@@ -10,6 +10,8 @@ import { Dashboard } from './pages/Dashboard'
 import { ProductsPage } from './pages/ProductsPage'
 import { CategoriesPage } from './pages/CategoriesPage'
 import { Placeholder } from './pages/Placeholder'
+import { SettingsPage } from './pages/SettingsPage'
+import { useConfirmDiscardAll } from './components/UnsavedChanges'
 
 export default function App() {
   const [admin, setAdmin] = useState<Admin | null>(null)
@@ -19,6 +21,7 @@ export default function App() {
   const [dark, setDark] = useState(() => localStorage.getItem('giftcheta-theme') !== 'light')
 
   const navigate = useNavigate()
+  const confirmDiscardAll = useConfirmDiscardAll()
   const notify = useCallback((message: string, kind: ToastState['kind'] = 'success') => { setToast({ message, kind }); window.setTimeout(() => setToast(null), 3200) }, [])
 
   useEffect(() => { document.documentElement.classList.toggle('dark', dark); localStorage.setItem('giftcheta-theme', dark ? 'dark' : 'light') }, [dark])
@@ -39,7 +42,7 @@ export default function App() {
     const result = await api<{ data: { admin: Admin; csrfToken: string } }>('/auth/login', { method: 'POST', body: json({ email, password }) })
     setCsrfToken(result.data.csrfToken); setAdmin(result.data.admin); notify(`Здравей, ${result.data.admin.name}`); navigate('/admin')
   }
-  const logout = async () => { try { await api('/auth/logout', { method: 'POST', body: '{}' }) } finally { setAdmin(null); navigate('/admin/login') } }
+  const logout = async () => { if (!confirmDiscardAll()) return; try { await api('/auth/logout', { method: 'POST', body: '{}' }) } finally { setAdmin(null); navigate('/admin/login') } }
 
   if (!ready) return <><GlobalLoadingBar active/><div className="boot-screen"><div className="boot-mark">G</div><span>Подготвяме администрацията…</span></div></>
   if (!admin) return <><GlobalLoadingBar active={loading}/><Routes><Route path="/admin/login" element={<Login onLogin={login} />} /><Route path="*" element={<Navigate to="/admin/login" replace />} /></Routes></>
@@ -50,6 +53,7 @@ export default function App() {
         <NavLink to="/admin" icon={<LayoutDashboard/>} label="Табло"/>
         <NavLink to="/admin/products" icon={<Package/>} label="Продукти"/>
         <NavLink to="/admin/categories" icon={<Tags/>} label="Категории"/>
+        <NavLink to="/admin/settings" icon={<Settings/>} label="Настройки"/>
       </nav>
       <div className="nav-divider" aria-hidden="true"/>
       <nav className="nav-list">
@@ -68,7 +72,7 @@ export default function App() {
         <Route path="/admin/categories" element={<CategoriesPage notify={notify}/>} />
         <Route path="/admin/orders" element={<Placeholder title="Поръчки" icon={<ClipboardList/>}/>} />
         <Route path="/admin/customers" element={<Placeholder title="Клиенти" icon={<Users/>}/>} />
-        <Route path="/admin/settings" element={<Placeholder title="Настройки" icon={<Settings/>}/>} />
+        <Route path="/admin/settings" element={<SettingsPage/>} />
         <Route path="*" element={<Navigate to="/admin" replace/>}/>
       </Routes>
     </main>

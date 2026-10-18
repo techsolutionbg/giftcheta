@@ -46,5 +46,20 @@ services:
     volumes:
       - ./:/workspace
     command: ["npm", "run", "build"]
+  admin-dev:
+    image: node:24-alpine
+    profiles: [dev]
+    working_dir: /workspace/admin
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./:/workspace
+      - admin_node_modules:/workspace/admin/node_modules
+    environment:
+      API_PROXY_TARGET: http://app
+    command: ["sh", "-c", "npm ci && npm run dev -- --host 0.0.0.0"]
+    depends_on:
+      - app
 volumes:
   mysql_data:
+  admin_node_modules:

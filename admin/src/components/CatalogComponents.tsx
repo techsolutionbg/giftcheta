@@ -4,7 +4,7 @@ import { FieldHelp } from './FieldHelp'
 
 export function StatCard({icon,label,value,note,tint}:{icon:React.ReactNode;label:string;value:string;note:string;tint:string}){return <div className="stat-card"><div className={`stat-icon ${tint}`}>{icon}</div><span className="stat-label">{label}</span><strong>{value}</strong><small>{note}</small></div>}
 
-export function StatusBadge({status}:{status:string}){return <span className={`status-badge ${status}`}>{status==='active'?'Активен':status==='archived'?'Архивиран':'Чернова'}</span>}
+export function StatusBadge({status}:{status:string}){return <span className={`status-badge ${status}`}>{status==='trashed'?'В кошчето':status==='active'?'Активен':status==='archived'?'Архивиран':'Чернова'}</span>}
 
 export function EmptyState({icon,title,description,action,products=false,categories=false}:{icon:React.ReactNode;title:string;description:string;action?:React.ReactNode;products?:boolean;categories?:boolean}) {
   const catalogEmpty = products || categories

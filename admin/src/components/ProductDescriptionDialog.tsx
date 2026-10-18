@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type * as React from 'react'
 import { createPortal } from 'react-dom'
 import { Check, FileText, Save, X } from 'lucide-react'
 import { api, json } from '../lib/api'
 import type { Product, ToastState } from '../types/admin'
 import { LazyRichTextEditor } from './LazyRichTextEditor'
+import { useUnsavedChanges } from './UnsavedChanges'
 
 type ProductDescriptionDialogProps = {
   product: Pick<Product, 'id' | 'name'>
@@ -21,12 +22,16 @@ export function ProductDescriptionDialog({ product, notify, onClose, onSaved }: 
   const [loadError, setLoadError] = useState(false)
   const [retry, setRetry] = useState(0)
   const [closing, setClosing] = useState(false)
+  const initialDescription = useRef('')
+  const { confirmDiscard, markClean } = useUnsavedChanges('описанието на продукта', !busy && !loadError && description !== initialDescription.current)
 
   useEffect(() => {
     let active = true
     void api<{ data: Product & { description?: string | null } }>(`/products/${product.id}`).then(result => {
       if (!active) return
-      setDescription(result.data.description || '')
+      const loadedDescription = result.data.description || ''
+      initialDescription.current = loadedDescription
+      setDescription(loadedDescription)
       setError('')
       setLoadError(false)
     }).catch(err => {
@@ -36,7 +41,8 @@ export function ProductDescriptionDialog({ product, notify, onClose, onSaved }: 
   }, [product.id, retry])
 
   const close = (afterSave = false) => {
-    if (closing || (saving && !afterSave)) return
+    if (closing || (saving && !afterSave) || (!afterSave && !confirmDiscard())) return
+    if (afterSave) markClean()
     setClosing(true)
     window.setTimeout(onClose, 240)
   }
@@ -47,6 +53,7 @@ export function ProductDescriptionDialog({ product, notify, onClose, onSaved }: 
     setError('')
     try {
       await api(`/products/${product.id}`, { method: 'PATCH', body: json({ description }) })
+      initialDescription.current = description
       onSaved?.(description)
       notify('Описанието е запазено.')
       close(true)
