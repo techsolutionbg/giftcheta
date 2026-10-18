@@ -1,0 +1,5 @@
+ALTER TABLE categories
+  MODIFY COLUMN description MEDIUMTEXT NULL;
+
+ALTER TABLE products
+  MODIFY COLUMN short_description MEDIUMTEXT NULL;

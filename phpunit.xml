@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="vendor/autoload.php" colors="true" cacheDirectory=".phpunit.cache">
+  <php><env name="TEST_DB_NAME" value="giftcheta_test"/></php>
+  <testsuites><testsuite name="Giftcheta"><directory>tests</directory></testsuite></testsuites>
+</phpunit>

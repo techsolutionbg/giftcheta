@@ -1,0 +1,15 @@
+/vendor/
+/.env
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/cache/*
+!/storage/cache/.gitkeep
+/storage/private/*
+!/storage/private/.gitkeep
+/admin/node_modules/
+/admin/dist/
+/public/uploads/**
+!/public/uploads/.htaccess
+!/public/uploads/products/
+!/public/uploads/products/.htaccess
+/.phpunit.cache/

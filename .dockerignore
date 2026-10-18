@@ -1,0 +1,11 @@
+.git
+.env
+vendor
+admin/node_modules
+admin/dist
+storage/logs/*
+storage/cache/*
+storage/private/*
+tests
+README.md
+docs
