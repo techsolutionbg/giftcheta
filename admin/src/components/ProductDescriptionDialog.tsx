@@ -40,8 +40,8 @@ export function ProductDescriptionDialog({ product, notify, onClose, onSaved }: 
     return () => { active = false }
   }, [product.id, retry])
 
-  const close = (afterSave = false) => {
-    if (closing || (saving && !afterSave) || (!afterSave && !confirmDiscard())) return
+  const close = async (afterSave = false) => {
+    if (closing || (saving && !afterSave) || (!afterSave && !(await confirmDiscard()))) return
     if (afterSave) markClean()
     setClosing(true)
     window.setTimeout(onClose, 240)

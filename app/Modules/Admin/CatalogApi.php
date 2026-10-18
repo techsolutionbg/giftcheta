@@ -15,7 +15,9 @@ final class CatalogApi
     public function categories(Request $r): Response
     {
         if ($e = $this->auth->guard($r, 'categories.read', false)) return $e;
-        $rows = $this->db->query('SELECT c.*, (SELECT COUNT(*) FROM product_categories pc JOIN products p ON p.id=pc.product_id WHERE pc.category_id=c.id AND p.deleted_at IS NULL) AS product_count FROM categories c ORDER BY c.sort_order,c.name')->fetchAll(PDO::FETCH_ASSOC);
+        $trashOnly = ($r->query['trash'] ?? '') === 'only';
+        $statement = $this->db->prepare('SELECT c.*, (SELECT COUNT(*) FROM product_categories pc JOIN products p ON p.id=pc.product_id WHERE pc.category_id=c.id AND p.deleted_at IS NULL) AS product_count FROM categories c WHERE c.deleted_at ' . ($trashOnly ? 'IS NOT NULL' : 'IS NULL') . ' ORDER BY c.sort_order,c.name');
+        $statement->execute(); $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
         return Response::json(['data' => $rows]);
     }
 
@@ -23,7 +25,7 @@ final class CatalogApi
     {
         if($e=$this->auth->guard($r,'products.read',false))return $e;
         $products=$this->db->query("SELECT COUNT(*) total, SUM(status='active') active, SUM(status='draft') drafts FROM products WHERE deleted_at IS NULL")->fetch(PDO::FETCH_ASSOC);
-        $categories=(int)$this->db->query('SELECT COUNT(*) FROM categories')->fetchColumn();
+        $categories=(int)$this->db->query('SELECT COUNT(*) FROM categories WHERE deleted_at IS NULL')->fetchColumn();
         return Response::json(['data'=>['products'=>(int)$products['total'],'active'=>(int)$products['active'],'drafts'=>(int)$products['drafts'],'categories'=>$categories]]);
     }
 
@@ -44,7 +46,7 @@ final class CatalogApi
         $rawSlug=trim((string)($d['slug']??''));$slug = $this->slug($rawSlug!==''?$rawSlug:$name);
         if ($slug === '' || $this->exists('categories', 'slug', $slug)) return $this->error('slug_conflict', 'This category slug is invalid or already in use.', 409);
         $parent = $this->nullableId($d['parent_id'] ?? null);
-        if ($parent !== null && !$this->existsId('categories', $parent)) return $this->error('validation_error', 'The selected parent category does not exist.', 422);
+        if ($parent !== null && !$this->existsActiveCategory($parent)) return $this->error('validation_error', 'The selected parent category does not exist.', 422);
         $q = $this->db->prepare('INSERT INTO categories (parent_id,name,slug,description,is_active,sort_order,seo_title,seo_description) VALUES (?,?,?,?,?,?,?,?)');
         $q->execute([$parent,$name,$slug,$this->nullableText($d['description'] ?? null),$this->bool($d['is_active'] ?? true), (int) ($d['sort_order'] ?? 0), $this->nullableText($d['seo_title'] ?? null), $this->nullableText($d['seo_description'] ?? null)]);
         return Response::json(['data' => ['id' => (int) $this->db->lastInsertId()]], 201);
@@ -62,7 +64,7 @@ final class CatalogApi
         $parent = array_key_exists('parent_id', $d) ? $this->nullableId($d['parent_id']) : ($old['parent_id'] === null ? null : (int) $old['parent_id']);
         if ($parent === $id) return $this->error('category_cycle', 'A category cannot be its own parent.', 422);
         if ($parent !== null) {
-            if (!$this->existsId('categories', $parent)) return $this->error('validation_error', 'The selected parent category does not exist.', 422);
+            if (!$this->existsActiveCategory($parent)) return $this->error('validation_error', 'The selected parent category does not exist.', 422);
             $q = $this->db->prepare('SELECT id,parent_id FROM categories'); $q->execute(); $parents = [];
             foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) $parents[(int) $row['id']] = $row['parent_id'] === null ? null : (int) $row['parent_id'];
             $cursor = $parent; $seen = [];
@@ -77,10 +79,30 @@ final class CatalogApi
     {
         if ($e = $this->auth->guard($r, 'categories.delete', true)) return $e;
         $id = (int) ($p['id'] ?? 0);
-        if (!$this->existsId('categories', $id)) return $this->notFound();
+        $category=$this->find('categories',$id);if(!$category)return $this->notFound();
+        if($category['deleted_at']!==null)return $this->error('category_already_trashed','Категорията вече е в кошчето.',409);
+        $this->db->prepare('UPDATE categories SET deleted_at=CURRENT_TIMESTAMP WHERE id=?')->execute([$id]);
+        return Response::json(['data' => ['trashed' => true]]);
+    }
+
+    public function restoreCategory(Request $r,array $p): Response
+    {
+        if($e=$this->auth->guard($r,'categories.delete',true))return $e;
+        $id=(int)($p['id']??0);$category=$this->find('categories',$id);if(!$category)return $this->notFound();
+        if($category['deleted_at']===null)return $this->error('category_not_trashed','Категорията не е в кошчето.',409);
+        $this->db->prepare('UPDATE categories SET deleted_at=NULL WHERE id=?')->execute([$id]);
+        return Response::json(['data'=>['restored'=>true]]);
+    }
+
+    public function permanentlyDeleteCategory(Request $r,array $p): Response
+    {
+        if($e=$this->auth->guard($r,'categories.delete',true))return $e;
+        $id=(int)($p['id']??0);$category=$this->find('categories',$id);if(!$category)return $this->notFound();
+        if($category['deleted_at']===null)return $this->error('category_not_trashed','Първо преместете категорията в кошчето.',409);
         $q = $this->db->prepare('SELECT (SELECT COUNT(*) FROM categories WHERE parent_id=?) + (SELECT COUNT(*) FROM product_categories WHERE category_id=?)'); $q->execute([$id,$id]);
-        if ((int) $q->fetchColumn() > 0) return $this->error('category_in_use', 'Move or remove its child categories and products before deleting it.', 409);
+        if ((int) $q->fetchColumn() > 0) return $this->error('category_in_use', 'Преместете или премахнете подкатегориите и продуктите преди окончателното изтриване.', 409);
         $this->db->prepare('DELETE FROM categories WHERE id=?')->execute([$id]);
+        $this->removePublicFile($category['image_path']);
         return Response::json(['data' => ['deleted' => true]]);
     }
 
@@ -121,7 +143,7 @@ final class CatalogApi
         if (isset($r->query['category_id']) && ctype_digit((string) $r->query['category_id'])) { $where[] = 'EXISTS (SELECT 1 FROM product_categories pc WHERE pc.product_id=p.id AND pc.category_id=?)'; $args[] = (int) $r->query['category_id']; }
         $clause = $where ? ' WHERE ' . implode(' AND ', $where) : '';
         $count = $this->db->prepare('SELECT COUNT(*) FROM products p' . $clause); $count->execute($args); $total = (int) $count->fetchColumn();
-        $sql = 'SELECT p.id,p.name,p.slug,p.sku,p.price,p.sale_price,p.status,p.inventory_mode,p.stock_quantity,p.is_available,p.updated_at,p.deleted_at,(SELECT i.file_path FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) AS image_path,(SELECT GROUP_CONCAT(c.name ORDER BY c.sort_order SEPARATOR ", ") FROM product_categories pc JOIN categories c ON c.id=pc.category_id WHERE pc.product_id=p.id) AS categories FROM products p' . $clause . " ORDER BY {$sort} {$direction},p.id DESC LIMIT {$per} OFFSET " . (($page-1)*$per);
+        $sql = 'SELECT p.id,p.name,p.slug,p.sku,p.price,p.sale_price,p.status,p.inventory_mode,p.stock_quantity,p.is_available,p.updated_at,p.deleted_at,(SELECT i.file_path FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) AS image_path,(SELECT GROUP_CONCAT(c.name ORDER BY c.sort_order SEPARATOR ", ") FROM product_categories pc JOIN categories c ON c.id=pc.category_id WHERE pc.product_id=p.id AND c.deleted_at IS NULL) AS categories FROM products p' . $clause . " ORDER BY {$sort} {$direction},p.id DESC LIMIT {$per} OFFSET " . (($page-1)*$per);
         $q = $this->db->prepare($sql); $q->execute($args);
         return Response::json(['data' => $q->fetchAll(PDO::FETCH_ASSOC), 'meta' => ['page'=>$page,'per_page'=>$per,'total'=>$total,'pages'=>(int) ceil($total/$per)]]);
     }
@@ -319,7 +341,13 @@ final class CatalogApi
     {
         if($e=$this->auth->guard($r,'products.write',true))return $e;
         $product=(int)($p['id']??0);if(!$this->existsId('products',$product))return $this->notFound();
-        $file=$r->files['image']??null;if(!is_array($file)||($file['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK)return $this->error('upload_error','Choose an image to upload.',422);
+        $file=$r->files['image']??null;if(!is_array($file))return $this->error('upload_error','Choose an image to upload.',422);
+        $uploadError=(int)($file['error']??UPLOAD_ERR_NO_FILE);
+        if($uploadError!==UPLOAD_ERR_OK){
+            if(in_array($uploadError,[UPLOAD_ERR_INI_SIZE,UPLOAD_ERR_FORM_SIZE],true))return $this->error('upload_too_large','Images must be 10 MB or smaller.',422);
+            if($uploadError===UPLOAD_ERR_NO_FILE)return $this->error('upload_error','Choose an image to upload.',422);
+            return $this->error('upload_error','The image could not be uploaded. Please try again.',422);
+        }
         if((int)$file['size']>10*1024*1024)return $this->error('upload_too_large','Images must be 10 MB or smaller.',422);
         if(!is_uploaded_file($file['tmp_name']))return $this->error('upload_error','Invalid uploaded file.',422);
         $finfo=new \finfo(FILEINFO_MIME_TYPE);$mime=$finfo->file($file['tmp_name']);$allowed=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];
@@ -364,9 +392,10 @@ final class CatalogApi
     private function removePublicFile(?string $relative): void
     { if(!$relative||str_contains($relative,'..'))return;$path=$this->projectRoot.'/public/'.ltrim($relative,'/');if(is_file($path))unlink($path); }
     private function syncCategories(int $product,mixed $ids): void
-    { if(!is_array($ids))throw new \InvalidArgumentException('Category ids must be an array.');$ids=array_values(array_unique(array_filter(array_map('intval',$ids),fn($id)=>$id>0)));if($ids){$in=implode(',',array_fill(0,count($ids),'?'));$q=$this->db->prepare("SELECT COUNT(*) FROM categories WHERE id IN ({$in})");$q->execute($ids);if((int)$q->fetchColumn()!==count($ids))throw new \InvalidArgumentException('One or more categories do not exist.');}$this->db->prepare('DELETE FROM product_categories WHERE product_id=?')->execute([$product]);$q=$this->db->prepare('INSERT INTO product_categories (product_id,category_id) VALUES (?,?)');foreach($ids as $id)$q->execute([$product,$id]); }
+    { if(!is_array($ids))throw new \InvalidArgumentException('Category ids must be an array.');$ids=array_values(array_unique(array_filter(array_map('intval',$ids),fn($id)=>$id>0)));if($ids){$in=implode(',',array_fill(0,count($ids),'?'));$q=$this->db->prepare("SELECT COUNT(*) FROM categories WHERE id IN ({$in}) AND deleted_at IS NULL");$q->execute($ids);if((int)$q->fetchColumn()!==count($ids))throw new \InvalidArgumentException('One or more categories do not exist.');}$this->db->prepare('DELETE FROM product_categories WHERE product_id=?')->execute([$product]);$q=$this->db->prepare('INSERT INTO product_categories (product_id,category_id) VALUES (?,?)');foreach($ids as $id)$q->execute([$product,$id]); }
     private function validCategoryIds(mixed $ids): bool
-    { if(!is_array($ids))return false;$normalized=array_values(array_unique(array_filter(array_map('intval',$ids),fn($id)=>$id>0)));if(count($normalized)!==count($ids))return $ids===[];if(!$normalized)return true;$in=implode(',',array_fill(0,count($normalized),'?'));$q=$this->db->prepare("SELECT COUNT(*) FROM categories WHERE id IN ({$in})");$q->execute($normalized);return (int)$q->fetchColumn()===count($normalized); }
+    { if(!is_array($ids))return false;$normalized=array_values(array_unique(array_filter(array_map('intval',$ids),fn($id)=>$id>0)));if(count($normalized)!==count($ids))return $ids===[];if(!$normalized)return true;$in=implode(',',array_fill(0,count($normalized),'?'));$q=$this->db->prepare("SELECT COUNT(*) FROM categories WHERE id IN ({$in}) AND deleted_at IS NULL");$q->execute($normalized);return (int)$q->fetchColumn()===count($normalized); }
+    private function existsActiveCategory(int $id): bool {$q=$this->db->prepare('SELECT 1 FROM categories WHERE id=? AND deleted_at IS NULL');$q->execute([$id]);return (bool)$q->fetchColumn();}
     private function variantKey(array $options): string
     { $clean=[];foreach($options as $name=>$value){$name=mb_strtolower(trim((string)$name));$value=mb_strtolower(trim((string)$value));if($name!==''&&$value!=='')$clean[$name]=$value;}ksort($clean,SORT_STRING);return hash('sha256',json_encode($clean,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)); }
     private function existsVariantKey(int $product,string $key,?int $exclude=null): bool

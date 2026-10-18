@@ -48,3 +48,27 @@ export function formatMoney(value: number | string | null | undefined, separator
   }).format(amount)
   return `€${formatted}`
 }
+
+export function normalizeMoneyInput(value: string, separator: AdminSettings['decimalSeparator'] = ',') {
+  const raw = value.trim().replace(/[^\d.,-]/g, '')
+  if (!raw) return ''
+  const negative = raw.startsWith('-')
+  const unsigned = raw.replace(/-/g, '')
+  const comma = unsigned.lastIndexOf(',')
+  const dot = unsigned.lastIndexOf('.')
+  const lastIndex = Math.max(comma, dot)
+  if (lastIndex < 0) return `${negative ? '-' : ''}${unsigned.replace(/\D/g, '')}`
+
+  const enteredSeparator = unsigned[lastIndex]
+  const fraction = unsigned.slice(lastIndex + 1).replace(/\D/g, '')
+  const wholePart = unsigned.slice(0, lastIndex).replace(/\D/g, '')
+  const isGroupingOnly = enteredSeparator !== separator && (comma < 0) !== (dot < 0) && fraction.length === 3 && wholePart.length > 0
+  if (isGroupingOnly) return `${negative ? '-' : ''}${wholePart}${fraction}`
+  return `${negative ? '-' : ''}${wholePart}${fraction ? `.${fraction}` : '.'}`
+}
+
+export function formatMoneyInput(value: string | number | null | undefined, separator: AdminSettings['decimalSeparator'] = ',') {
+  if (value === null || value === undefined || value === '') return ''
+  const text = String(value)
+  return separator === ',' ? text.replace('.', ',') : text.replace(',', '.')
+}

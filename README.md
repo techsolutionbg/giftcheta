@@ -20,7 +20,7 @@ docker compose exec app php bin/create-admin.php
 
 Open the administration panel at `http://localhost:8080/admin/`; sign in with the administrator created by the command above. The backend health check is `http://localhost:8080/api/v1/health`, and development status is at `/api/v1/status`. phpMyAdmin is available at `http://localhost:8081` and connects to the Compose database service. Log in using `DB_USERNAME` and `DB_PASSWORD` from `.env` (or use `root` and `DB_ROOT_PASSWORD`). Stop with `docker compose down`; `docker compose down -v` also removes the local database volume.
 
-For automatic browser updates while editing the React admin, start the optional Vite development server with `docker compose --profile dev up -d --build` and open `http://localhost:5173/admin/`. It watches mounted source files (including on Docker Desktop) and proxies API requests to the PHP app. The regular `http://localhost:8080/admin/` address continues to serve the static build; rebuild it after changes with `docker compose --profile build run --rm admin-build`. Node is not needed in production.
+For automatic browser reloads while editing the admin, start the optional Vite development server with `docker compose --profile dev up -d --build admin-dev` and open `http://localhost:5173/admin/`. It watches additions, edits, and removals under `admin/src/`, `app/`, `config/`, `bin/`, and `database/`, as well as `public/index.php`, and proxies API requests to the PHP app. The regular `http://localhost:8080/admin/` address serves the static build and does not watch source files; rebuild it after changes with `docker compose --profile build run --rm admin-build`. Node is not needed in production.
 
 ### First administrator
 
