@@ -6,6 +6,7 @@ import { Check, Maximize2, X } from 'lucide-react'
 import { FormField } from '../components/CatalogComponents'
 import { FieldHelp } from '../components/FieldHelp'
 import { SelectionControl } from '../components/SelectionControl'
+import { DialogFooter } from '../components/DialogFooter'
 import { Dropdown } from '../components/Dropdown'
 import { DescriptionEditorDialog } from '../components/DescriptionEditorDialog'
 import { LazyRichTextEditor } from '../components/LazyRichTextEditor'
@@ -67,7 +68,7 @@ export function CategoryEditor({category,categories,onClose,onSave}:{category:Ca
           <div className="category-form-full"><FormField label="Изображение" helpText="Качете изображение, което визуално представя категорията."><ProductImageUploader categoryId={savedId??undefined} singleImage images={images} onImagesChange={setImages} pendingFiles={pendingFiles} onPendingFilesChange={setPendingFiles} primaryPendingIndex={primaryPendingIndex} onPrimaryPendingIndexChange={setPrimaryPendingIndex} onError={setErr}/></FormField></div>
           {err&&<div className="form-error category-form-full" role="alert">{err}</div>}
         </div>
-        <footer className="editor-footer"><button type="button" className="outline-button" onClick={()=>void close()}>Отказ</button><button className="primary-button" disabled={saving||uploading}>{saving?'Запис…':'Запази'}<Check size={15}/></button></footer>
+        <DialogFooter><button type="button" className="outline-button" onClick={()=>void close()}>Отказ</button><button className="primary-button" disabled={saving||uploading}>{saving?'Запис…':'Запази'}<Check size={15}/></button></DialogFooter>
       </form>
     </div>
     {descriptionOpen&&savedId&&<DescriptionEditorDialog title="Описание на категорията" subject={form.name||category?.name||''} initialValue={form.description||''} onSave={updateDescription} onClose={()=>setDescriptionOpen(false)}/>}

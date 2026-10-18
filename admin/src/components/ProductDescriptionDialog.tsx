@@ -5,6 +5,7 @@ import { Check, FileText, Save, X } from 'lucide-react'
 import { api, json } from '../lib/api'
 import type { Product, ToastState } from '../types/admin'
 import { LazyRichTextEditor } from './LazyRichTextEditor'
+import { DialogFooter } from './DialogFooter'
 import { useUnsavedChanges } from './UnsavedChanges'
 
 type ProductDescriptionDialogProps = {
@@ -78,7 +79,7 @@ export function ProductDescriptionDialog({ product, notify, onClose, onSaved }: 
             {error && <div className="form-error" role="alert">{error}</div>}
           </>}
         </main>
-        <footer className="description-dialog-footer"><button type="button" className="outline-button" onClick={() => close()}>Отказ</button><button type="submit" className="primary-button" disabled={busy || saving || loadError}><Save size={16}/>{saving ? 'Запазване…' : 'Запази описанието'}<Check size={15}/></button></footer>
+        <DialogFooter className="description-dialog-footer"><button type="button" className="outline-button" onClick={() => close()}>Отказ</button><button type="submit" className="primary-button" disabled={busy || saving || loadError}><Save size={16}/>{saving ? 'Запазване…' : 'Запази описанието'}<Check size={15}/></button></DialogFooter>
       </form>
     </section>
   </div>, document.body)

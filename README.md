@@ -18,7 +18,11 @@ docker compose exec app php bin/migrate.php
 docker compose exec app php bin/create-admin.php
 ```
 
-Open the administration panel at `http://localhost:8080/admin/`; sign in with the administrator created by the command above. The backend health check is `http://localhost:8080/api/v1/health`, and development status is at `/api/v1/status`. phpMyAdmin is available at `http://localhost:8081` and connects to the Compose database service. Log in using `DB_USERNAME` and `DB_PASSWORD` from `.env` (or use `root` and `DB_ROOT_PASSWORD`). Stop with `docker compose down`; `docker compose down -v` also removes the local database volume.
+Open the administration panel at `http://localhost:8080/admin/`; sign in with the administrator created by the command above. The backend health check is `http://localhost:8080/api/v1/health`, and development status is at `/api/v1/status`. phpMyAdmin is available at `http://localhost:8081` and connects to the Compose database service. Log in using `DB_USERNAME` and `DB_PASSWORD` from `.env` (or use `root` and `DB_ROOT_PASSWORD`). Mailpit captures local test email at `http://localhost:8025`; the app's SMTP settings point to `mailpit:1025` inside Compose. Messages stay in Mailpit and are not delivered to real recipients. Its UI and SMTP ports are bound to localhost only. Stop with `docker compose down`; `docker compose down -v` also removes the local database volume.
+
+### Customer password recovery
+
+In a customer's edit dialog, use **Изпрати линк за възстановяване** for an active customer account that already has a password. The customer receives a one-time link that expires after 60 minutes. The reset page accepts a new password of 12–72 characters, stores only a password hash, and invalidates all outstanding reset links. The reset request is limited to three links per customer in 15 minutes. The public reset page does not provide customer registration, login, or a customer portal. In local development, inspect the captured message in Mailpit. Set `APP_URL` to the trusted public origin in deployment; password reset URLs require HTTPS in production.
 
 For automatic browser reloads while editing the admin, start the optional Vite development server with `docker compose --profile dev up -d --build admin-dev` and open `http://localhost:5173/admin/`. It watches additions, edits, and removals under `admin/src/`, `app/`, `config/`, `bin/`, and `database/`, as well as `public/index.php`, and proxies API requests to the PHP app. The regular `http://localhost:8080/admin/` address serves the static build and does not watch source files; rebuild it after changes with `docker compose --profile build run --rm admin-build`. Node is not needed in production.
 
@@ -28,7 +32,7 @@ Run `docker compose exec app php bin/create-admin.php`, then provide an email, d
 
 ## Configuration and database
 
-Copy `.env.example` to `.env`. The Compose app connects to service `db` using `DB_HOST=db`. For direct hosting, set `DB_HOST` to the database host provided by the host. The PDO factory uses native prepared statements, exceptions, and `utf8mb4`.
+Copy `.env.example` to `.env`. The Compose app connects to service `db` using `DB_HOST=db`. Local email configuration uses `MAIL_HOST=mailpit` and `MAIL_PORT=1025`; the corresponding PHP config is available as `mail.*`. For direct hosting, set `DB_HOST` to the database host provided by the host and configure mail settings for that environment. The PDO factory uses native prepared statements, exceptions, and `utf8mb4`.
 
 Place ordered `*.sql` migration files in `database/migrations`; run `php bin/migrate.php`. Applied names and batches are recorded in `migrations`. MySQL DDL is not transactional: inspect the schema after a failed migration before retrying.
 

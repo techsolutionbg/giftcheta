@@ -4,3 +4,6 @@ export type Category = { id: number; parent_id: number | null; name: string; slu
 export type Product = { id: number; name: string; slug: string; sku: string | null; price: string; sale_price: string | null; status: string; inventory_mode: string; stock_quantity: number | null; is_available: number; updated_at: string; deleted_at: string | null; image_path: string | null; categories: string | null }
 export type PageMeta = { page: number; per_page: number; total: number; pages: number }
 export type ToastState = { message: string; kind: 'success' | 'error' }
+export type CustomerStatus = 'active' | 'inactive' | 'blocked'
+export type CustomerAddress = { id: number; customer_id: number; recipient_name: string; phone: string | null; country_code: string; city: string; postal_code: string | null; address_line1: string; address_line2: string | null; is_default: number; created_at: string; updated_at: string }
+export type Customer = { id: number; first_name: string; last_name: string; email: string | null; phone: string | null; status: CustomerStatus; email_verified_at: string | null; has_account?: boolean; admin_notes?: string | null; created_at: string; updated_at: string; deleted_at: string | null; address_count?: number; addresses?: CustomerAddress[] }
