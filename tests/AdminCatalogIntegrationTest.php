@@ -70,6 +70,7 @@ final class AdminCatalogIntegrationTest extends TestCase
         $variant=['option_values'=>['Color'=>'Black','Size'=>'M'],'sku'=>'test-'.bin2hex(random_bytes(3))];
         self::assertSame(201,$this->catalog->createVariant($this->request('POST',$variant),['id'=>(string)$productId])->status);
         self::assertSame(409,$this->catalog->createVariant($this->request('POST',['option_values'=>['Size'=>'m','Color'=>'black']]),['id'=>(string)$productId])->status);
+        self::assertSame(200,$this->catalog->deleteProduct($this->request('DELETE',[]),['id'=>(string)$productId])->status);
         self::assertSame(409,$this->catalog->deleteProduct($this->request('DELETE',[]),['id'=>(string)$productId])->status);
     }
 

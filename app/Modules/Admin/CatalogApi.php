@@ -283,6 +283,7 @@ final class CatalogApi
     {
         if($e=$this->auth->guard($r,'products.write',true))return $e;
         $id=(int)($p['id']??0); if(!$this->existsId('product_variants',$id))return $this->notFound();
+        $orders=$this->db->prepare('SELECT 1 FROM order_items WHERE product_variant_id=? LIMIT 1');$orders->execute([$id]);if($orders->fetchColumn())return $this->error('variant_has_order_history','Вариантът е използван в поръчка и не може да бъде изтрит, за да се запазят историята и коректното възстановяване на наличността.',409);
         $this->db->prepare('DELETE FROM product_variants WHERE id=?')->execute([$id]); return Response::json(['data'=>['deleted'=>true]]);
     }
 

@@ -1,6 +1,6 @@
 # Giftcheta
 
-Independent, lightweight e-commerce foundation using plain PHP, PDO, MySQL, Apache, and Docker. The current stage includes a React administration panel for the product catalog and categories, backed by a versioned PHP JSON API. Checkout, orders, and the public storefront are future stages.
+Independent, lightweight e-commerce foundation using plain PHP, PDO, MySQL, Apache, and Docker. The React administration panel includes product catalog, categories, customer contacts and addresses, password recovery for existing customer accounts, and order management, backed by a versioned PHP JSON API. The public storefront and checkout remain future stages.
 
 ## Requirements
 
@@ -23,6 +23,10 @@ Open the administration panel at `http://localhost:8080/admin/`; sign in with th
 ### Customer password recovery
 
 In a customer's edit dialog, use **Изпрати линк за възстановяване** for an active customer account that already has a password. The customer receives a one-time link that expires after 60 minutes. The reset page accepts a new password of 12–72 characters, stores only a password hash, and invalidates all outstanding reset links. The reset request is limited to three links per customer in 15 minutes. The public reset page does not provide customer registration, login, or a customer portal. In local development, inspect the captured message in Mailpit. Set `APP_URL` to the trusted public origin in deployment; password reset URLs require HTTPS in production.
+
+### Orders administration
+
+The admin order module supports manual order entry for guests or existing customers, saved or manually entered shipping addresses, product variants and personalization, inventory deduction, order and payment status history, cancellation with one-time stock restoration, internal notes, and customer email notifications through the retryable outbox. Prices are recalculated by the server and saved as order snapshots. Shipping cost is entered per order because there is no configured shipping-rate service yet; tax and discounts remain zero until their policies are defined. This module does not add a storefront, cart, checkout, payment gateway, or customer portal.
 
 For automatic browser reloads while editing the admin, start the optional Vite development server with `docker compose --profile dev up -d --build admin-dev` and open `http://localhost:5173/admin/`. It watches additions, edits, and removals under `admin/src/`, `app/`, `config/`, `bin/`, and `database/`, as well as `public/index.php`, and proxies API requests to the PHP app. The regular `http://localhost:8080/admin/` address serves the static build and does not watch source files; rebuild it after changes with `docker compose --profile build run --rm admin-build`. Node is not needed in production.
 
@@ -63,4 +67,4 @@ Use PHP 8.3+, PDO MySQL, Apache `mod_rewrite`, and set the domain document root 
 
 ## Next stages
 
-Continue with customer/cart/order flows and payments/shipping settings. Keep storefront rendering server-side and preserve shared-hosting compatibility.
+Continue with the public storefront and checkout, then define payment, tax, discount, and shipping-rate policies before automating those parts of order entry. Keep storefront rendering server-side and preserve shared-hosting compatibility.

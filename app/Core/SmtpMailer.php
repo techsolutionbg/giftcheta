@@ -15,6 +15,16 @@ final class SmtpMailer
 
     public function send(string $recipient, string $subject, string $body): void
     {
+        $this->deliver((new Email())->to($recipient)->subject($subject)->text($body), $recipient);
+    }
+
+    public function sendHtml(string $recipient, string $subject, string $text, string $html): void
+    {
+        $this->deliver((new Email())->to($recipient)->subject($subject)->text($text)->html($html), $recipient);
+    }
+
+    private function deliver(Email $email, string $recipient): void
+    {
         $host = trim((string) $this->config->get('mail.host', '127.0.0.1'));
         $port = (int) $this->config->get('mail.port', 1025);
         $encryption = strtolower((string) ($this->config->get('mail.encryption') ?? ''));
@@ -35,11 +45,7 @@ final class SmtpMailer
         if ($encryption === 'tls') $dsn .= '?require_tls=true';
         elseif ($encryption === '') $dsn .= '?auto_tls=false';
 
-        $email = (new Email())
-            ->from(new Address($from, $fromName))
-            ->to($recipient)
-            ->subject($subject)
-            ->text($body);
+        $email->from(new Address($from, $fromName));
         (new Mailer(Transport::fromDsn($dsn)))->send($email);
     }
 }
