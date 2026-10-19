@@ -19,7 +19,31 @@
 @keyframes product-add-particle{0%{opacity:0;transform:translate3d(-3px,0,0) scale(.4)}20%{opacity:1;transform:translate3d(0,var(--particle-y),0) scale(1.35)}70%{opacity:.85;transform:translate3d(5px,var(--particle-y),0) scale(.9)}100%{opacity:0;transform:translate3d(9px,var(--particle-y),0) scale(.2)}}
 @media(max-width:650px){.add-cart-form .product-add-button{min-height:56px;padding:0 8px;border-radius:14px}.product-add-button .product-add-icon{width:34px;height:34px;padding:5px}.product-add-button .product-add-label{font-size:.84rem}}
 @media(prefers-reduced-motion:reduce){.product-add-button .product-add-particles i{animation:none!important}.add-cart-form .product-add-button{transition:none}}
-</style><style>.add-cart-form .quantity-stepper{height:60px}@media(max-width:650px){.add-cart-form .quantity-stepper{height:56px}}</style><form class="add-cart-form" method="post" action="/cart/items" enctype="multipart/form-data" data-cart-product>
+</style><style>.add-cart-form .quantity-stepper{height:60px}@media(max-width:650px){.add-cart-form .quantity-stepper{height:56px}}</style>
+<style>
+.product-benefits{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;margin:32px 0 8px;padding:20px 14px;border:1px solid #f1e8e4;border-radius:18px;background:linear-gradient(115deg,#fffdfc,#fff8f5);box-shadow:0 10px 28px #5b30200a}
+.product-benefit{min-width:0;display:flex;align-items:center;gap:14px;padding:8px 18px}
+.product-benefit+.product-benefit{border-left:1px solid #f0e6e2}
+.product-benefit-icon{width:38px;height:38px;flex:0 0 38px;fill:none;stroke:var(--accent);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.product-benefit-copy{display:grid;gap:2px;line-height:1.35}
+.product-benefit-copy strong{color:#332a2c;font-size:.95rem;font-weight:600}
+.product-benefit-copy span{color:#817576;font-size:.83rem}
+@media(max-width:900px){.product-benefits{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:14px}.product-benefit{padding:12px}.product-benefit:nth-child(3){border-left:0}.product-benefit:nth-child(n+3){border-top:1px solid #f0e6e2}}
+@media(max-width:520px){.product-benefits{margin-top:24px;padding:10px;gap:0}.product-benefit{gap:9px;padding:12px 8px}.product-benefit-icon{width:30px;height:30px;flex-basis:30px}.product-benefit-copy strong{font-size:.84rem}.product-benefit-copy span{font-size:.75rem}}
+.product-tabs{margin:34px 0 12px;overflow:hidden;border:1px solid #f0e7e3;border-radius:18px;background:#fff;box-shadow:0 12px 32px #5b30200a}
+.product-tab-list{display:flex;overflow-x:auto;border-bottom:1px solid #f0e8e5;scrollbar-width:none}.product-tab-list::-webkit-scrollbar{display:none}
+.product-tab{position:relative;flex:1 0 150px;min-height:64px;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 18px;border:0;background:#fff;color:#625b5b;font-size:.95rem;font-weight:500;white-space:nowrap;cursor:pointer;transition:color .2s,background .2s}
+.product-tab:after{position:absolute;right:16px;bottom:0;left:16px;height:3px;border-radius:3px 3px 0 0;background:var(--accent);content:"";transform:scaleX(0);transform-origin:center;transition:transform .24s ease}
+.product-tab[aria-selected=true]{background:linear-gradient(180deg,#fff,#fffafb);color:var(--accent-dark)}.product-tab[aria-selected=true]:after{transform:scaleX(1)}
+.product-tab svg{width:21px;height:21px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.product-tab-panel{min-height:150px;padding:clamp(20px,4vw,34px);color:#625b5b;font-size:.96rem;line-height:1.75}.product-tab-panel[hidden]{display:none!important}.product-tab-panel.is-entering{animation:product-tab-enter .28s ease both}
+.product-tab-panel h2{margin:0 0 12px;color:#30282a;font-size:1.2rem;font-weight:600;line-height:1.3}.product-tab-panel p{margin:0 0 10px}.product-tab-panel p:last-child{margin-bottom:0}.product-tab-panel ul{display:grid;gap:10px;margin:0;padding:0;list-style:none}.product-tab-panel li{display:flex;justify-content:space-between;gap:20px;padding:10px 0;border-bottom:1px solid #f2ece9}.product-tab-panel li:last-child{border-bottom:0}.product-tab-panel li span:first-child{color:#3a3233}.product-tab-panel li small{color:#887d7e;text-align:right}.product-tab-options{display:flex;flex-wrap:wrap;gap:7px;margin-top:7px}.product-tab-options span{padding:4px 10px;border:1px solid #f0e1e3;border-radius:999px;background:#fff8f8;color:#75666a;font-size:.82rem;line-height:1.4}
+.product-tab-note{padding:15px 17px;border:1px solid #f2e7e3;border-radius:12px;background:#fffaf8;color:#756b66}
+@keyframes product-tab-enter{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:650px){.product-tabs{margin-top:26px;border-radius:14px}.product-tab{flex-basis:130px;min-height:58px;gap:7px;padding:10px 12px;font-size:.88rem}.product-tab svg{width:19px;height:19px}.product-tab-panel{min-height:130px;padding:20px 17px;font-size:.9rem}.product-tab-panel h2{font-size:1.08rem}.product-tab-panel li{gap:12px}}
+@media(prefers-reduced-motion:reduce){.product-tab,.product-tab:after{transition:none}.product-tab-panel.is-entering{animation:none}}
+</style>
+<form class="add-cart-form" method="post" action="/cart/items" enctype="multipart/form-data" data-cart-product>
   <input type="hidden" name="_csrf" value="<?= $view->e($csrfToken) ?>"><input type="hidden" name="product_id" value="<?= (int)$product['id'] ?>">
   <div class="price" id="product-price" data-product-price data-base-price-cents="<?= (int)$product['base_price_cents'] ?>"><?= $view->money($effectivePrice) ?></div>
   <div class="stock <?= $available?'':'out' ?>" data-stock-status data-base-available="<?= $available?'1':'0' ?>" data-base-quantity="<?= $product['inventory_mode']==='tracked'?(int)$product['stock_quantity']:'' ?>"><?= $available?'В наличност':'Временно изчерпан' ?></div>
@@ -39,8 +63,41 @@
   <?php endforeach; ?>
   <div class="product-purchase-row"><label class="custom-field product-quantity-field"><strong>Количество</strong><span class="quantity-stepper"><input class="custom-input" type="number" name="quantity" min="1" max="999" value="1" required aria-label="Количество"><span class="quantity-stepper-buttons"><button type="button" data-quantity-step="1" aria-label="Увеличи количеството"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 14 6-6 6 6"/></svg></button><button type="button" data-quantity-step="-1" aria-label="Намали количеството"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 10 6 6 6-6"/></svg></button></span></span></label><button class="button product-add-button" type="submit" <?= !$available?'disabled':'' ?>><span class="product-add-particles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span><svg class="product-add-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/><path d="m9 14 2 2 4-4"/></svg><span class="product-add-label">Добави в количката</span><svg class="product-add-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg><span class="product-add-spinner" aria-hidden="true"></span></button></div><p class="product-cart-feedback" role="status" aria-live="polite" hidden></p>
 </form>
-<?php if($product['description']): ?><div class="description"><?= \Giftcheta\Modules\Storefront\HtmlSanitizer::clean($product['description']) ?></div><?php endif; ?>
 </div></article>
+<section class="product-benefits" aria-label="Предимства при поръчка">
+  <?php $freeShippingThreshold=(int)($freeShippingThresholdCents??12000); ?>
+  <div class="product-benefit"><svg class="product-benefit-icon" viewBox="0 0 40 40" aria-hidden="true"><path d="M4 11h20v17H4zM24 17h7l7 7v4H24z"/><circle cx="12" cy="30" r="3"/><circle cx="31" cy="30" r="3"/><path d="M28 17v7h10"/></svg><div class="product-benefit-copy"><strong>Безплатна доставка</strong><span>при поръчки над <?= $view->e($view->money(number_format($freeShippingThreshold/100,2,'.',''))) ?></span></div></div>
+  <div class="product-benefit"><svg class="product-benefit-icon" viewBox="0 0 40 40" aria-hidden="true"><path d="M7 18h26v17H7zM5 12h30v7H5zM20 12v23M20 12h-7a5 5 0 1 1 5-5c0 3 2 5 2 5Zm0 0h7a5 5 0 1 0-5-5c0 3-2 5-2 5Z"/></svg><div class="product-benefit-copy"><strong>Подаръчна опаковка</strong><span>готова за подаряване</span></div></div>
+  <div class="product-benefit"><svg class="product-benefit-icon" viewBox="0 0 40 40" aria-hidden="true"><path d="m20 4 4.5 9 10 1.5-7.2 7 1.7 10L20 27l-9 4.5 1.7-10-7.2-7 10-1.5z"/><path d="M20 4v23"/></svg><div class="product-benefit-copy"><strong>Персонализиран подарък</strong><span>с лично послание</span></div></div>
+  <div class="product-benefit"><svg class="product-benefit-icon" viewBox="0 0 40 40" aria-hidden="true"><path d="M7 13a14 14 0 0 1 24-4l3 3M34 5v7h-7M33 27a14 14 0 0 1-24 4l-3-3M6 35v-7h7"/><path d="M13 20h14"/></svg><div class="product-benefit-copy"><strong>Лесно връщане</strong><span>пазарувайте спокойно</span></div></div>
+</section>
+<section class="product-tabs" data-product-tabs aria-label="Подробна информация за продукта">
+  <div class="product-tab-list" role="tablist" aria-label="Информация за продукта">
+    <button class="product-tab" id="product-tab-description" type="button" role="tab" aria-selected="true" aria-controls="product-panel-description" tabindex="0"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 14.5 8l5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"/></svg><span>Описание</span></button>
+    <button class="product-tab" id="product-tab-personalization" type="button" role="tab" aria-selected="false" aria-controls="product-panel-personalization" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v11H4zM3 6h18v4H3zM12 6v15M12 6H8a2.5 2.5 0 1 1 2.5-2.5C10.5 5 12 6 12 6Zm0 0h4a2.5 2.5 0 1 0-2.5-2.5C13.5 5 12 6 12 6Z"/></svg><span>Персонализация</span></button>
+    <button class="product-tab" id="product-tab-delivery" type="button" role="tab" aria-selected="false" aria-controls="product-panel-delivery" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h12v11H3zM15 10h4l3 3v4h-7z"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg><span>Доставка</span></button>
+    <button class="product-tab" id="product-tab-reviews" type="button" role="tab" aria-selected="false" aria-controls="product-panel-reviews" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 14.6 8.8l5.9.9-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2 5.9-.9z"/></svg><span>Отзиви</span></button>
+  </div>
+  <div class="product-tab-panel is-entering" id="product-panel-description" role="tabpanel" aria-labelledby="product-tab-description" tabindex="0">
+    <h2>За продукта</h2>
+    <?php if(!empty($product['description'])): ?><div class="description"><?= \Giftcheta\Modules\Storefront\HtmlSanitizer::clean($product['description']) ?></div><?php elseif(!empty($product['short_description'])): ?><p><?= $view->e($product['short_description']) ?></p><?php else: ?><p class="product-tab-note">Подробностите за този продукт ще бъдат добавени скоро.</p><?php endif; ?>
+  </div>
+  <div class="product-tab-panel" id="product-panel-personalization" role="tabpanel" aria-labelledby="product-tab-personalization" tabindex="0" hidden>
+    <h2>Персонализирайте своя подарък</h2>
+    <?php if(!empty($product['fields'])): ?><ul><?php foreach($product['fields'] as $field): ?><li><div><span><?= $view->e($field['name']) ?></span><?php if(!empty($field['options_list'])): ?><div class="product-tab-options"><?php foreach($field['options_list'] as $option): ?><span><?= $view->e(\Giftcheta\Modules\Commerce\ProductCustomizationValidator::optionLabel($option)) ?></span><?php endforeach; ?></div><?php endif; ?></div><small><?= !empty($field['is_required'])?'Задължително':'По избор' ?></small></li><?php endforeach; ?></ul><?php else: ?><p class="product-tab-note">Този продукт няма допълнителни полета за персонализация. Ако предлага варианти, можете да ги изберете в секцията за поръчка.</p><?php endif; ?>
+  </div>
+  <div class="product-tab-panel" id="product-panel-delivery" role="tabpanel" aria-labelledby="product-tab-delivery" tabindex="0" hidden>
+    <h2>Доставка и връщане</h2>
+    <?php if(!empty($freeShippingEnabled)): ?><p>Получавате безплатна доставка при поръчка над <strong><?= $view->e($view->money(number_format($freeShippingThreshold/100,2,'.',''))) ?></strong>.</p><?php else: ?><p>Начинът и цената на доставката ще се покажат при завършване на поръчката.</p><?php endif; ?>
+    <p>Информацията за наличните начини на доставка и условията за връщане се показва при оформяне на поръчката.</p>
+  </div>
+  <div class="product-tab-panel" id="product-panel-reviews" role="tabpanel" aria-labelledby="product-tab-reviews" tabindex="0" hidden>
+    <h2>Отзиви от клиенти</h2><p class="product-tab-note">Все още няма публикувани отзиви за този продукт.</p>
+  </div>
+</section>
+<script>
+(()=>{const root=document.querySelector('[data-product-tabs]');if(!root)return;const tabs=[...root.querySelectorAll('[role=tab]')],panels=tabs.map(tab=>document.getElementById(tab.getAttribute('aria-controls')));function activate(index,focus=false){const next=(index+tabs.length)%tabs.length;tabs.forEach((tab,i)=>{const selected=i===next;tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;panels[i].hidden=!selected;panels[i].classList.remove('is-entering')});if(focus)tabs[next].focus();requestAnimationFrame(()=>{panels[next].classList.add('is-entering')})}tabs.forEach((tab,index)=>{tab.addEventListener('click',()=>activate(index));tab.addEventListener('keydown',event=>{let next=index;if(event.key==='ArrowRight')next=index+1;else if(event.key==='ArrowLeft')next=index-1;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else return;event.preventDefault();activate(next,true)})})})();
+</script>
 <script>
 (()=>{
   const form=document.querySelector('[data-cart-product]');if(!form)return;
