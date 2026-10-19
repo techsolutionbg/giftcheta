@@ -4,12 +4,13 @@ import { api, json } from '../lib/api'
 import { formatMoney, useAdminSettings } from '../lib/adminSettings'
 import type { Customer, CustomerAddress, Product, ProductDetails, ToastState } from '../types/admin'
 import { DialogFooter } from '../components/DialogFooter'
+import { SaveButton } from '../components/SaveButton'
 import { FormField } from '../components/CatalogComponents'
 import { SearchField } from '../components/SearchField'
 import { MoneyInput } from '../components/MoneyInput'
 import { Dropdown } from '../components/Dropdown'
 import { SelectionControl } from '../components/SelectionControl'
-import { ChevronRight, Plus, Trash2, X } from 'lucide-react'
+import { Plus, Trash2, X } from 'lucide-react'
 
 type DraftLine = { key: string; product: ProductDetails; variantId: string; quantity: string; values: Record<number,string> }
 type ContactForm = { first_name: string; last_name: string; email: string; phone: string }
@@ -125,7 +126,7 @@ export function OrderCreateDialog({ onClose, notify }: { onClose: () => void; no
             <div className="order-total-preview"><span>Междинна сума</span><strong>{formatMoney(money(subtotal),settings.decimalSeparator)}</strong><span>Доставка</span><strong>{formatMoney(money(shippingCents),settings.decimalSeparator)}</strong><span>Данък</span><strong>{formatMoney('0.00',settings.decimalSeparator)}</strong><span className="order-grand-label">Общо · EUR</span><strong className="order-grand-total">{formatMoney(money(subtotal+shippingCents),settings.decimalSeparator)}</strong></div>
           </div>
         </div>
-        <DialogFooter className="order-create-footer"><button type="button" className="outline-button" disabled={saving} onClick={()=>{setClosing(true);window.setTimeout(onClose,240)}}>Отказ</button><button className="primary-button" disabled={saving||loadingCustomer||loadingProducts}>{saving?'Запис…':'Създай поръчка'}<ChevronRight size={16}/></button></DialogFooter>
+        <DialogFooter className="order-create-footer"><button type="button" className="outline-button" disabled={saving} onClick={()=>{setClosing(true);window.setTimeout(onClose,240)}}>Отказ</button><SaveButton disabled={saving||loadingCustomer||loadingProducts} loading={saving} loadingLabel="Запис…">Създай поръчка</SaveButton></DialogFooter>
       </form>
     </section>
   </div>

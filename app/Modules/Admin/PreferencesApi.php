@@ -22,7 +22,8 @@ final class PreferencesApi
         $preferences = $query->fetchAll(PDO::FETCH_KEY_PAIR);
         $width = isset($preferences['sidebar_width']) ? (int) $preferences['sidebar_width'] : self::DEFAULT_SIDEBAR_WIDTH;
         $open = !array_key_exists('sidebar_open', $preferences) || $preferences['sidebar_open'] === '1';
-        return Response::json(['data' => ['sidebarWidth' => $this->clampWidth($width), 'sidebarOpen' => $open]]);
+        $store = $this->db->query('SELECT free_shipping_enabled, free_shipping_threshold FROM store_settings WHERE setting_id = 1')->fetch(PDO::FETCH_ASSOC);
+        return Response::json(['data' => ['sidebarWidth' => $this->clampWidth($width), 'sidebarOpen' => $open, 'freeShippingEnabled' => (bool) $store['free_shipping_enabled'], 'freeShippingThreshold' => (string) $store['free_shipping_threshold']]]);
     }
 
     public function update(Request $request): Response
@@ -31,13 +32,26 @@ final class PreferencesApi
         $input = $request->json();
         $width = array_key_exists('sidebarWidth', $input) ? filter_var($input['sidebarWidth'], FILTER_VALIDATE_INT) : null;
         $open = array_key_exists('sidebarOpen', $input) ? filter_var($input['sidebarOpen'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) : null;
-        if ($width === false || ($width !== null && ($width < self::MIN_SIDEBAR_WIDTH || $width > self::MAX_SIDEBAR_WIDTH)) || (array_key_exists('sidebarOpen', $input) && $open === null) || ($width === null && $open === null)) {
-            return Response::json(['error' => ['code' => 'validation_error', 'message' => 'Ширината трябва да бъде между 220 и 360 пиксела.']], 422);
+        $shippingEnabled = array_key_exists('freeShippingEnabled', $input) ? filter_var($input['freeShippingEnabled'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) : null;
+        $threshold = null;
+        if (array_key_exists('freeShippingThreshold', $input)) {
+            $rawThreshold = is_scalar($input['freeShippingThreshold']) ? trim((string) $input['freeShippingThreshold']) : '';
+            if (preg_match('/^\d{1,7}(?:\.\d{1,2})?$/D', $rawThreshold) !== 1 || (float) $rawThreshold < 0.01 || (float) $rawThreshold > 1000000) {
+                return Response::json(['error' => ['code' => 'validation_error', 'message' => 'Сумата за безплатна доставка трябва да бъде между 0,01 и 1 000 000 евро.']], 422);
+            }
+            $threshold = number_format((float) $rawThreshold, 2, '.', '');
+        }
+        if ($width === false || ($width !== null && ($width < self::MIN_SIDEBAR_WIDTH || $width > self::MAX_SIDEBAR_WIDTH)) || (array_key_exists('sidebarOpen', $input) && $open === null) || (array_key_exists('freeShippingEnabled', $input) && $shippingEnabled === null) || ($width === null && $open === null && $shippingEnabled === null && $threshold === null)) {
+            return Response::json(['error' => ['code' => 'validation_error', 'message' => 'Проверете стойностите на настройките.']], 422);
         }
         $statement = $this->db->prepare('INSERT INTO admin_preferences (admin_id, preference_key, preference_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE preference_value = VALUES(preference_value)');
         if ($width !== null) $statement->execute([$_SESSION['admin_id'], 'sidebar_width', (string) $width]);
         if ($open !== null) $statement->execute([$_SESSION['admin_id'], 'sidebar_open', $open ? '1' : '0']);
-        return Response::json(['data' => array_filter(['sidebarWidth' => $width, 'sidebarOpen' => $open], static fn ($value) => $value !== null)]);
+        if ($shippingEnabled !== null || $threshold !== null) {
+            $update = $this->db->prepare('UPDATE store_settings SET free_shipping_enabled = COALESCE(?, free_shipping_enabled), free_shipping_threshold = COALESCE(?, free_shipping_threshold) WHERE setting_id = 1');
+            $update->execute([$shippingEnabled === null ? null : ($shippingEnabled ? 1 : 0), $threshold]);
+        }
+        return Response::json(['data' => array_filter(['sidebarWidth' => $width, 'sidebarOpen' => $open, 'freeShippingEnabled' => $shippingEnabled, 'freeShippingThreshold' => $threshold], static fn ($value) => $value !== null)]);
     }
 
     private function clampWidth(int $width): int

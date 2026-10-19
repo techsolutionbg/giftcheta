@@ -2,11 +2,12 @@ import { api, json } from '../lib/api'
 import type { Category } from '../types/admin'
 import { useRef, useState } from 'react'
 import type * as React from 'react'
-import { Check, Maximize2, X } from 'lucide-react'
+import { Maximize2, X } from 'lucide-react'
 import { FormField } from '../components/CatalogComponents'
 import { FieldHelp } from '../components/FieldHelp'
 import { SelectionControl } from '../components/SelectionControl'
 import { DialogFooter } from '../components/DialogFooter'
+import { SaveButton } from '../components/SaveButton'
 import { Dropdown } from '../components/Dropdown'
 import { DescriptionEditorDialog } from '../components/DescriptionEditorDialog'
 import { LazyRichTextEditor } from '../components/LazyRichTextEditor'
@@ -68,7 +69,7 @@ export function CategoryEditor({category,categories,onClose,onSave}:{category:Ca
           <div className="category-form-full"><FormField label="Изображение" helpText="Качете изображение, което визуално представя категорията."><ProductImageUploader categoryId={savedId??undefined} singleImage images={images} onImagesChange={setImages} pendingFiles={pendingFiles} onPendingFilesChange={setPendingFiles} primaryPendingIndex={primaryPendingIndex} onPrimaryPendingIndexChange={setPrimaryPendingIndex} onError={setErr}/></FormField></div>
           {err&&<div className="form-error category-form-full" role="alert">{err}</div>}
         </div>
-        <DialogFooter><button type="button" className="outline-button" onClick={()=>void close()}>Отказ</button><button className="primary-button" disabled={saving||uploading}>{saving?'Запис…':'Запази'}<Check size={15}/></button></DialogFooter>
+        <DialogFooter><button type="button" className="outline-button" onClick={()=>void close()}>Отказ</button><SaveButton disabled={saving||uploading} loading={saving} loadingLabel="Запис…">Запази</SaveButton></DialogFooter>
       </form>
     </div>
     {descriptionOpen&&savedId&&<DescriptionEditorDialog title="Описание на категорията" subject={form.name||category?.name||''} initialValue={form.description||''} onSave={updateDescription} onClose={()=>setDescriptionOpen(false)}/>}

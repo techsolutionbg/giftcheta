@@ -70,8 +70,13 @@ final class CatalogApi
             $cursor = $parent; $seen = [];
             while ($cursor !== null) { if ($cursor === $id || isset($seen[$cursor])) return $this->error('category_cycle', 'This parent would create a category cycle.', 422); $seen[$cursor] = true; $cursor = $parents[$cursor] ?? null; }
         }
-        $q = $this->db->prepare('UPDATE categories SET parent_id=?,name=?,slug=?,description=?,is_active=?,sort_order=?,seo_title=?,seo_description=? WHERE id=?');
-        $q->execute([$parent,$name,$slug,$this->nullableText($d['description'] ?? $old['description']),$this->bool($d['is_active'] ?? $old['is_active']), (int) ($d['sort_order'] ?? $old['sort_order']),$this->nullableText($d['seo_title'] ?? $old['seo_title']),$this->nullableText($d['seo_description'] ?? $old['seo_description']),$id]);
+        $this->db->beginTransaction();
+        try {
+            $q = $this->db->prepare('UPDATE categories SET parent_id=?,name=?,slug=?,description=?,is_active=?,sort_order=?,seo_title=?,seo_description=? WHERE id=?');
+            $q->execute([$parent,$name,$slug,$this->nullableText($d['description'] ?? $old['description']),$this->bool($d['is_active'] ?? $old['is_active']), (int) ($d['sort_order'] ?? $old['sort_order']),$this->nullableText($d['seo_title'] ?? $old['seo_title']),$this->nullableText($d['seo_description'] ?? $old['seo_description']),$id]);
+            if ($slug !== $old['slug']) $this->recordSlugRedirect('/category/'.$old['slug'], '/category/'.$slug);
+            $this->db->commit();
+        } catch (Throwable $error) { if ($this->db->inTransaction()) $this->db->rollBack(); throw $error; }
         return Response::json(['data' => ['updated' => true]]);
     }
 
@@ -203,16 +208,20 @@ final class CatalogApi
         if(array_key_exists('price',$d)&&!$this->money($d['price'])) return $this->error('validation_error','Price must be a non-negative decimal amount.',422);
         if(array_key_exists('sale_price',$d)&&$d['sale_price']!==null&&$d['sale_price']!==''&&!$this->money($d['sale_price'])) return $this->error('validation_error','Promotional price must be a non-negative decimal amount.',422);
         if(array_key_exists('category_ids',$d)&&!$this->validCategoryIds($d['category_ids'])) return $this->error('validation_error','One or more selected categories do not exist.',422);
+        $defaultVariantId=$old['default_variant_id']===null?null:(int)$old['default_variant_id'];
+        if(array_key_exists('default_variant_id',$d)){if($d['default_variant_id']===null||$d['default_variant_id']==='')$defaultVariantId=null;else{$parsedDefaultId=filter_var($d['default_variant_id'],FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);if($parsedDefaultId===false)return $this->error('validation_error','Избраният вариант по подразбиране е невалиден.',422);$defaultVariantId=(int)$parsedDefaultId;}}
+        if($defaultVariantId!==null){$defaultVariant=$this->db->prepare('SELECT 1 FROM product_variants WHERE id=? AND product_id=? AND is_active=1 LIMIT 1');$defaultVariant->execute([$defaultVariantId,$id]);if(!$defaultVariant->fetchColumn())return $this->error('validation_error','Изберете активен вариант от този продукт.',422);}
         $sku=array_key_exists('sku',$d)?$this->nullableText($d['sku']):$old['sku']; if($sku!==null&&$this->exists('products','sku',$sku,$id)) return $this->error('sku_conflict','This SKU is already in use.',409);
         $status=in_array($d['status']??$old['status'],['draft','active','archived'],true)?($d['status']??$old['status']):$old['status'];
         $mode=($d['inventory_mode']??$old['inventory_mode'])==='tracked'?'tracked':'boolean';
         $qty=$mode==='tracked'?max(0,(int)($old['inventory_mode']==='tracked'?$old['stock_quantity']:($d['stock_quantity']??0))):null;
         $this->db->beginTransaction();
         try {
-            $q=$this->db->prepare('UPDATE products SET name=?,slug=?,sku=?,short_description=?,description=?,price=?,sale_price=?,status=?,inventory_mode=?,stock_quantity=?,is_available=?,seo_title=?,seo_description=? WHERE id=?');
-            $q->execute([$name,$slug,$sku,$this->nullableText($d['short_description']??$old['short_description']),$this->nullableText($d['description']??$old['description']),(string)($d['price']??$old['price']),$this->nullableMoney($d['sale_price']??$old['sale_price']),$status,$mode,$qty,$mode==='tracked'?(int)($qty>0):$this->bool($d['is_available']??$old['is_available']),$this->nullableText($d['seo_title']??$old['seo_title']),$this->nullableText($d['seo_description']??$old['seo_description']),$id]);
+            $q=$this->db->prepare('UPDATE products SET name=?,slug=?,sku=?,short_description=?,description=?,price=?,sale_price=?,default_variant_id=?,status=?,inventory_mode=?,stock_quantity=?,is_available=?,seo_title=?,seo_description=? WHERE id=?');
+            $q->execute([$name,$slug,$sku,$this->nullableText($d['short_description']??$old['short_description']),$this->nullableText($d['description']??$old['description']),(string)($d['price']??$old['price']),$this->nullableMoney($d['sale_price']??$old['sale_price']),$defaultVariantId,$status,$mode,$qty,$mode==='tracked'?(int)($qty>0):$this->bool($d['is_available']??$old['is_available']),$this->nullableText($d['seo_title']??$old['seo_title']),$this->nullableText($d['seo_description']??$old['seo_description']),$id]);
             if($mode==='tracked'&&($old['inventory_mode']!=='tracked'||(int)$old['stock_quantity']!==$qty)){$delta=$qty-(int)($old['inventory_mode']==='tracked'?$old['stock_quantity']:0);$this->db->prepare("INSERT INTO product_stock_movements (product_id,quantity_delta,quantity_after,reason,note,admin_id) VALUES (?,?,?,'admin_adjustment','Stock updated while editing product',?)")->execute([$id,$delta,$qty,$_SESSION['admin_id']]);}
             if(array_key_exists('category_ids',$d)) $this->syncCategories($id,$d['category_ids']);
+            if($slug!==$old['slug'])$this->recordSlugRedirect('/product/'.$old['slug'],'/product/'.$slug);
             $this->db->commit();
         } catch (Throwable $error) { if ($this->db->inTransaction()) $this->db->rollBack(); throw $error; }
         return Response::json(['data'=>['updated'=>true]]);
@@ -243,9 +252,10 @@ final class CatalogApi
         if($product['deleted_at']===null)return $this->error('product_not_trashed','Първо преместете продукта в кошчето.',409);
         $q=$this->db->prepare('SELECT COUNT(*) FROM product_stock_movements WHERE product_id=?');$q->execute([$id]);
         if((int)$q->fetchColumn()>0)return $this->error('product_has_stock_history','Продуктът има история на наличностите и не може да бъде изтрит завинаги. Оставете го в кошчето.',409);
-        $images=$this->rows('SELECT file_path,thumbnail_path FROM product_images WHERE product_id=?',[$id]);
+        $images=$this->rows('SELECT file_path,thumbnail_path FROM product_images WHERE product_id=?',[$id]);$variantImages=$this->rows('SELECT image_path,image_thumbnail_path FROM product_variants WHERE product_id=?',[$id]);
         $this->db->prepare('DELETE FROM products WHERE id=?')->execute([$id]);
         foreach($images as $image){$this->removePublicFile($image['file_path']);$this->removePublicFile($image['thumbnail_path']);}
+        foreach($variantImages as $image){$this->removePublicFile($image['image_path']);$this->removePublicFile($image['image_thumbnail_path']);}
         return Response::json(['data'=>['deleted'=>true]]);
     }
 
@@ -255,12 +265,13 @@ final class CatalogApi
         $product=(int)($p['id']??0); if(!$this->existsId('products',$product))return $this->notFound(); $d=$r->json();
         $options=$d['option_values']??null; if(!is_array($options)||$options===[])return $this->error('validation_error','Provide at least one variant option.',422);
         $key=$this->variantKey($options); if($this->existsVariantKey($product,$key))return $this->error('duplicate_variant','This option combination already exists.',409);
+        $colorHex=$this->nullableText($d['color_hex']??null); if($colorHex!==null&&!preg_match('/^#[0-9A-Fa-f]{6}$/',$colorHex))return $this->error('validation_error','Variant color must be a six-digit hex color.',422);
         $sku=$this->nullableText($d['sku']??null); if($sku!==null&&$this->exists('product_variants','sku',$sku))return $this->error('sku_conflict','This SKU is already in use.',409);
         if(isset($d['price'])&&$d['price']!==''&&!$this->money($d['price']))return $this->error('validation_error','Variant price must be a non-negative decimal.',422);
         if(isset($d['price_adjustment'])&&!$this->moneySigned($d['price_adjustment']))return $this->error('validation_error','Price adjustment must be a decimal with up to two places.',422);
         $mode=($d['inventory_mode']??'boolean')==='tracked'?'tracked':'boolean'; $qty=$mode==='tracked'?max(0,(int)($d['stock_quantity']??0)):null;
-        $q=$this->db->prepare('INSERT INTO product_variants (product_id,name,option_values,variant_key,sku,price,price_adjustment,inventory_mode,stock_quantity,is_available,is_active) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
-        $q->execute([$product,trim((string)($d['name']??implode(' / ',array_values($options)))),json_encode($options,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),$key,$sku,$this->nullableMoney($d['price']??null),(string)($d['price_adjustment']??'0'),$mode,$qty,$mode==='tracked'?(int)($qty>0):$this->bool($d['is_available']??true),$this->bool($d['is_active']??true)]);
+        $q=$this->db->prepare('INSERT INTO product_variants (product_id,name,color_hex,option_values,variant_key,sku,price,price_adjustment,inventory_mode,stock_quantity,is_available,is_active) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+        $q->execute([$product,trim((string)($d['name']??implode(' / ',array_values($options)))),$colorHex===null?null:strtoupper($colorHex),json_encode($options,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),$key,$sku,$this->nullableMoney($d['price']??null),(string)($d['price_adjustment']??'0'),$mode,$qty,$mode==='tracked'?(int)($qty>0):$this->bool($d['is_available']??true),$this->bool($d['is_active']??true)]);
         return Response::json(['data'=>['id'=>(int)$this->db->lastInsertId()]],201);
     }
 
@@ -270,21 +281,23 @@ final class CatalogApi
         $id=(int)($p['id']??0); $v=$this->find('product_variants',$id); if(!$v)return $this->notFound(); $d=$r->json();
         $opts=$d['option_values']??json_decode($v['option_values'],true); $key=$this->variantKey($opts);
         if($this->existsVariantKey((int)$v['product_id'],$key,$id))return $this->error('duplicate_variant','This option combination already exists.',409);
+        $colorHex=array_key_exists('color_hex',$d)?$this->nullableText($d['color_hex']):$v['color_hex']; if($colorHex!==null&&!preg_match('/^#[0-9A-Fa-f]{6}$/',$colorHex))return $this->error('validation_error','Variant color must be a six-digit hex color.',422);
         $sku=array_key_exists('sku',$d)?$this->nullableText($d['sku']):$v['sku']; if($sku!==null&&$this->exists('product_variants','sku',$sku,$id))return $this->error('sku_conflict','This SKU is already in use.',409);
         if(isset($d['price'])&&$d['price']!==''&&!$this->money($d['price']))return $this->error('validation_error','Variant price must be a non-negative decimal.',422);
         if(isset($d['price_adjustment'])&&!$this->moneySigned($d['price_adjustment']))return $this->error('validation_error','Price adjustment must be a decimal with up to two places.',422);
         $mode=($d['inventory_mode']??$v['inventory_mode'])==='tracked'?'tracked':'boolean'; $qty=$mode==='tracked'?max(0,(int)($d['stock_quantity']??$v['stock_quantity']??0)):null;
-        $q=$this->db->prepare('UPDATE product_variants SET name=?,option_values=?,variant_key=?,sku=?,price=?,price_adjustment=?,inventory_mode=?,stock_quantity=?,is_available=?,is_active=? WHERE id=?');
-        $q->execute([trim((string)($d['name']??$v['name'])),json_encode($opts,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),$key,$sku,$this->nullableMoney($d['price']??$v['price']), (string)($d['price_adjustment']??$v['price_adjustment']),$mode,$qty,$mode==='tracked'?(int)($qty>0):$this->bool($d['is_available']??$v['is_available']),$this->bool($d['is_active']??$v['is_active']),$id]);
+        $q=$this->db->prepare('UPDATE product_variants SET name=?,color_hex=?,option_values=?,variant_key=?,sku=?,price=?,price_adjustment=?,inventory_mode=?,stock_quantity=?,is_available=?,is_active=? WHERE id=?');
+        $active=$this->bool($d['is_active']??$v['is_active']);$q->execute([trim((string)($d['name']??$v['name'])),$colorHex===null?null:strtoupper($colorHex),json_encode($opts,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),$key,$sku,$this->nullableMoney($d['price']??$v['price']), (string)($d['price_adjustment']??$v['price_adjustment']),$mode,$qty,$mode==='tracked'?(int)($qty>0):$this->bool($d['is_available']??$v['is_available']),$active,$id]);
+        if(!$active)$this->db->prepare('UPDATE products SET default_variant_id=NULL WHERE default_variant_id=?')->execute([$id]);
         return Response::json(['data'=>['updated'=>true]]);
     }
 
     public function deleteVariant(Request $r,array $p): Response
     {
         if($e=$this->auth->guard($r,'products.write',true))return $e;
-        $id=(int)($p['id']??0); if(!$this->existsId('product_variants',$id))return $this->notFound();
+        $id=(int)($p['id']??0);$variant=$this->find('product_variants',$id);if(!$variant)return $this->notFound();
         $orders=$this->db->prepare('SELECT 1 FROM order_items WHERE product_variant_id=? LIMIT 1');$orders->execute([$id]);if($orders->fetchColumn())return $this->error('variant_has_order_history','Вариантът е използван в поръчка и не може да бъде изтрит, за да се запазят историята и коректното възстановяване на наличността.',409);
-        $this->db->prepare('DELETE FROM product_variants WHERE id=?')->execute([$id]); return Response::json(['data'=>['deleted'=>true]]);
+        $this->db->prepare('UPDATE products SET default_variant_id=NULL WHERE default_variant_id=?')->execute([$id]);$this->db->prepare('DELETE FROM product_variants WHERE id=?')->execute([$id]);$this->removePublicFile($variant['image_path']);$this->removePublicFile($variant['image_thumbnail_path']);return Response::json(['data'=>['deleted'=>true]]);
     }
 
     public function createField(Request $r,array $p): Response
@@ -292,8 +305,8 @@ final class CatalogApi
         if($e=$this->auth->guard($r,'products.write',true))return $e;
         $product=(int)($p['id']??0); if(!$this->existsId('products',$product))return $this->notFound(); $d=$r->json();
         $name=trim((string)($d['name']??'')); $type=(string)($d['field_type']??'');
-        if($name===''||!in_array($type,['text','textarea','image','select','checkbox'],true))return $this->error('validation_error','Name and a supported field type are required.',422);
-        $options=$d['options']??null; if($type==='select'&&(!is_array($options)||$options===[]))return $this->error('validation_error','Select fields need at least one option.',422);
+        if($name===''||!in_array($type,['text','textarea','image','select','radio','checkbox'],true))return $this->error('validation_error','Name and a supported field type are required.',422);
+        $options=$d['options']??null; if(in_array($type,['select','radio'],true)&&(!is_array($options)||$options===[]))return $this->error('validation_error','Choice fields need at least one option.',422);
         $price=(string)($d['additional_price']??'0'); if(!$this->money($price))return $this->error('validation_error','Additional price must be a non-negative decimal.',422);
         $q=$this->db->prepare('INSERT INTO product_customization_fields (product_id,name,field_type,is_required,position,validation_rules,options,additional_price,is_active) VALUES (?,?,?,?,?,?,?,?,?)');
         $q->execute([$product,$name,$type,$this->bool($d['is_required']??false),(int)($d['position']??0),isset($d['validation_rules'])?json_encode($d['validation_rules'],JSON_THROW_ON_ERROR):null,$options===null?null:json_encode($options,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),$price,$this->bool($d['is_active']??true)]);
@@ -304,10 +317,10 @@ final class CatalogApi
     {
         if($e=$this->auth->guard($r,'products.write',true))return $e;
         $id=(int)($p['id']??0); $f=$this->find('product_customization_fields',$id); if(!$f)return $this->notFound(); $d=$r->json();
-        $type=(string)($d['field_type']??$f['field_type']); if(!in_array($type,['text','textarea','image','select','checkbox'],true))return $this->error('validation_error','Unsupported field type.',422);
+        $type=(string)($d['field_type']??$f['field_type']); if(!in_array($type,['text','textarea','image','select','radio','checkbox'],true))return $this->error('validation_error','Unsupported field type.',422);
         $price=(string)($d['additional_price']??$f['additional_price']); if(!$this->money($price))return $this->error('validation_error','Additional price must be non-negative.',422);
         $options=$d['options']??($f['options']?json_decode($f['options'],true):null);
-        if($type==='select'&&(!is_array($options)||$options===[]))return $this->error('validation_error','Select fields need at least one option.',422);
+        if(in_array($type,['select','radio'],true)&&(!is_array($options)||$options===[]))return $this->error('validation_error','Choice fields need at least one option.',422);
         $rules=$d['validation_rules']??($f['validation_rules']?json_decode($f['validation_rules'],true):null);
         $q=$this->db->prepare('UPDATE product_customization_fields SET name=?,field_type=?,is_required=?,position=?,validation_rules=?,options=?,additional_price=?,is_active=? WHERE id=?');
         $q->execute([trim((string)($d['name']??$f['name'])),$type,$this->bool($d['is_required']??$f['is_required']),(int)($d['position']??$f['position']),$rules===null?null:json_encode($rules,JSON_THROW_ON_ERROR),$options===null?null:json_encode($options,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),$price,$this->bool($d['is_active']??$f['is_active']),$id]);
@@ -330,9 +343,9 @@ final class CatalogApi
         $this->db->beginTransaction();
         try {
             $q=$this->db->prepare("SELECT inventory_mode,stock_quantity,is_available FROM {$table} WHERE id=? FOR UPDATE");$q->execute([$target]);$old=$q->fetch(PDO::FETCH_ASSOC);
-            if($old['inventory_mode']!=='tracked')return $this->rollbackError('inventory_mode_mismatch','Enable quantity tracking before setting a stock count.',422);
+            if($old['inventory_mode']!=='tracked'&&$variantId===null)return $this->rollbackError('inventory_mode_mismatch','Enable quantity tracking before setting a stock count.',422);
             $new=(int)$qty;$delta=$new-(int)$old['stock_quantity'];
-            $this->db->prepare("UPDATE {$table} SET stock_quantity=?,is_available=? WHERE id=?")->execute([$new,(int)($new>0),$target]);
+            if($variantId!==null){$this->db->prepare("UPDATE product_variants SET inventory_mode='tracked',stock_quantity=?,is_available=? WHERE id=?")->execute([$new,(int)($new>0),$target]);}else{$this->db->prepare("UPDATE {$table} SET stock_quantity=?,is_available=? WHERE id=?")->execute([$new,(int)($new>0),$target]);}
             $this->db->prepare('INSERT INTO product_stock_movements (product_id,variant_id,quantity_delta,quantity_after,reason,note,admin_id) VALUES (?,?,?,?,?,?,?)')->execute([$productId,$variantId,$delta,$new,'admin_adjustment',$this->nullableText($d['note']??null),$_SESSION['admin_id']]);
             $this->db->commit();return Response::json(['data'=>['quantity'=>$new,'delta'=>$delta]]);
         }catch(Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
@@ -367,6 +380,37 @@ final class CatalogApi
         $rel='uploads/products/'.$fileName;$thumbRel='uploads/products/thumbnails/'.$thumbName;
         $q=$this->db->prepare('INSERT INTO product_images (product_id,file_path,thumbnail_path,alt_text,position,is_primary,mime_type,file_size) VALUES (?,?,?,?,?,?,?,?)');$q->execute([$product,$rel,$thumbRel,$this->nullableText($_POST['alt_text']??null),$pos,(int)$primary,$mimeOut,(int)filesize($dir.'/'.$fileName)]);
         return Response::json(['data'=>['id'=>(int)$this->db->lastInsertId(),'file_path'=>$rel,'thumbnail_path'=>$thumbRel,'is_primary'=>$primary]],201);
+    }
+
+    public function uploadVariantImage(Request $r,array $p): Response
+    {
+        if($e=$this->auth->guard($r,'products.write',true))return $e;
+        $variantId=(int)($p['id']??0);$variant=$this->find('product_variants',$variantId);if(!$variant)return $this->notFound();
+        $file=$r->files['image']??null;if(!is_array($file))return $this->error('upload_error','Choose an image to upload.',422);
+        $uploadError=(int)($file['error']??UPLOAD_ERR_NO_FILE);
+        if($uploadError!==UPLOAD_ERR_OK){if(in_array($uploadError,[UPLOAD_ERR_INI_SIZE,UPLOAD_ERR_FORM_SIZE],true))return $this->error('upload_too_large','Images must be 10 MB or smaller.',422);if($uploadError===UPLOAD_ERR_NO_FILE)return $this->error('upload_error','Choose an image to upload.',422);return $this->error('upload_error','The image could not be uploaded. Please try again.',422);}
+        if((int)$file['size']>10*1024*1024)return $this->error('upload_too_large','Images must be 10 MB or smaller.',422);
+        if(!is_uploaded_file($file['tmp_name']))return $this->error('upload_error','Invalid uploaded file.',422);
+        $finfo=new \finfo(FILEINFO_MIME_TYPE);$mime=$finfo->file($file['tmp_name']);$allowed=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];
+        if(!isset($allowed[$mime])||!@getimagesize($file['tmp_name']))return $this->error('image_type_invalid','Only valid JPEG, PNG, and WebP images are accepted.',422);
+        if(!function_exists('imagecreatefromstring'))return $this->error('image_processing_unavailable','Image processing is not enabled on this server.',503);
+        $image=@imagecreatefromstring((string)file_get_contents($file['tmp_name']));if(!$image)return $this->error('image_invalid','The image could not be decoded.',422);
+        if(imagesx($image)>6000||imagesy($image)>6000){imagedestroy($image);return $this->error('image_dimensions_invalid','Images cannot exceed 6000 pixels per dimension.',422);}
+        $base=bin2hex(random_bytes(16));$dir=$this->projectRoot.'/public/uploads/products/variants';$thumbDir=$dir.'/thumbnails';if(!is_dir($dir))mkdir($dir,0750,true);if(!is_dir($thumbDir))mkdir($thumbDir,0750,true);
+        $webp=function_exists('imagewebp');$extension=$webp?'webp':$allowed[$mime];$mimeOut=$webp?'image/webp':$mime;$fileName=$base.'.'.$extension;$thumbName=$base.'-thumb.'.$extension;
+        $saved=$this->saveImage($image,$dir.'/'.$fileName,$webp,$mime);if(!$saved){imagedestroy($image);return $this->error('image_processing_failed','The image could not be optimized.',500);}
+        $thumb=$this->thumbnail($image,600);$thumbSaved=$this->saveImage($thumb,$thumbDir.'/'.$thumbName,$webp,$mime);imagedestroy($thumb);imagedestroy($image);
+        if(!$thumbSaved){@unlink($dir.'/'.$fileName);return $this->error('image_processing_failed','The image thumbnail could not be created.',500);}
+        $imagePath='uploads/products/variants/'.$fileName;$thumbnailPath='uploads/products/variants/thumbnails/'.$thumbName;
+        $this->db->prepare('UPDATE product_variants SET image_path=?,image_thumbnail_path=? WHERE id=?')->execute([$imagePath,$thumbnailPath,$variantId]);
+        $this->removePublicFile($variant['image_path']);$this->removePublicFile($variant['image_thumbnail_path']);
+        return Response::json(['data'=>['image_path'=>$imagePath,'image_thumbnail_path'=>$thumbnailPath,'mime_type'=>$mimeOut,'file_size'=>(int)filesize($dir.'/'.$fileName)]],201);
+    }
+
+    public function deleteVariantImage(Request $r,array $p): Response
+    {
+        if($e=$this->auth->guard($r,'products.write',true))return $e;$id=(int)($p['id']??0);$variant=$this->find('product_variants',$id);if(!$variant)return $this->notFound();
+        $this->db->prepare('UPDATE product_variants SET image_path=NULL,image_thumbnail_path=NULL WHERE id=?')->execute([$id]);$this->removePublicFile($variant['image_path']);$this->removePublicFile($variant['image_thumbnail_path']);return Response::json(['data'=>['deleted'=>true]]);
     }
 
     public function updateImage(Request $r,array $p): Response
@@ -412,6 +456,13 @@ final class CatalogApi
         $value=strtr($value,['а'=>'a','б'=>'b','в'=>'v','г'=>'g','д'=>'d','е'=>'e','ж'=>'zh','з'=>'z','и'=>'i','й'=>'y','к'=>'k','л'=>'l','м'=>'m','н'=>'n','о'=>'o','п'=>'p','р'=>'r','с'=>'s','т'=>'t','у'=>'u','ф'=>'f','х'=>'h','ц'=>'ts','ч'=>'ch','ш'=>'sh','щ'=>'sht','ъ'=>'a','ь'=>'y','ю'=>'yu','я'=>'ya']);
         $latin=iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$value);$value=strtolower($latin!==false?$latin:$value);
         return trim((string)preg_replace('/[^a-z0-9]+/','-',$value),'-');
+    }
+
+    private function recordSlugRedirect(string $oldPath,string $newPath): void
+    {
+        $this->db->prepare('DELETE FROM seo_url_redirects WHERE old_path=?')->execute([$newPath]);
+        $q=$this->db->prepare('INSERT INTO seo_url_redirects (old_path,new_path) VALUES (?,?) ON DUPLICATE KEY UPDATE new_path=VALUES(new_path)');
+        $q->execute([$oldPath,$newPath]);
     }
     private function uniqueProductSlug(string $base,?int $exclude=null): string
     {

@@ -1,6 +1,6 @@
 # Giftcheta
 
-Independent, lightweight e-commerce foundation using plain PHP, PDO, MySQL, Apache, and Docker. The React administration panel includes product catalog, categories, customer contacts and addresses, password recovery for existing customer accounts, and order management, backed by a versioned PHP JSON API. The public storefront and checkout remain future stages.
+Independent, lightweight e-commerce application using plain PHP, PDO, MySQL, Apache, and Docker. The PHP-rendered public storefront reads the same product and category catalog used by the React administration panel. Admin catalog, customer contacts and addresses, password recovery for existing customer accounts, and order management are backed by a versioned PHP JSON API.
 
 ## Requirements
 
@@ -26,7 +26,17 @@ In a customer's edit dialog, use **Изпрати линк за възстано
 
 ### Orders administration
 
-The admin order module supports manual order entry for guests or existing customers, saved or manually entered shipping addresses, product variants and personalization, inventory deduction, order and payment status history, cancellation with one-time stock restoration, internal notes, and customer email notifications through the retryable outbox. Prices are recalculated by the server and saved as order snapshots. Shipping cost is entered per order because there is no configured shipping-rate service yet; tax and discounts remain zero until their policies are defined. This module does not add a storefront, cart, checkout, payment gateway, or customer portal.
+The admin order module supports manual order entry for guests or existing customers, saved or manually entered shipping addresses, product variants and personalization, inventory deduction, order and payment status history, cancellation with one-time stock restoration, internal notes, and customer email notifications through the retryable outbox. Prices are recalculated by the server and saved as order snapshots. Shipping cost is entered per order because there is no configured shipping-rate service yet; tax and discounts remain zero until their policies are defined.
+
+### Public storefront
+
+The server-rendered store uses the existing admin catalog at `/`, `/category/{slug}`, `/product/{slug}`, and `/search`. Active products and categories are exposed with their images, variant pricing, stock state, and personalization descriptions. Category and search pages support price filters, stock filters, sorting, and pagination. Category/product descriptions pass through an HTML allowlist. SEO metadata and schema markup are rendered per page; `/sitemap.xml` and `/robots.txt` are generated dynamically, and catalog slug changes keep a 301 redirect. The public `/cart` supports guest sessions, product variants, text/choice/checkbox/image personalization, quantity changes, item removal, and per-item customization updates. Prices and stock are rechecked by the server; adding to cart does not reserve stock. Checkout, payment, customer login, and cart-to-customer merging are not implemented.
+
+Cart customization images are validated and stored under `storage/private/cart-customizations`, outside the public document root. The cart file endpoint checks the current guest session before serving them. Run `php bin/cleanup-cart-files.php` periodically from a protected CLI scheduler to remove expired carts and old unclaimed uploads; no background worker is required.
+
+### Homepage banners
+
+Administrators with banner permissions can create, edit, publish, hide, reorder, and delete homepage banners at `/admin/banners`. Each banner has a title, description, button label and destination, image, optional alternative text, order, and active state. Images must be JPEG, PNG, or WebP up to 10 MB and are stored with generated names under `public/uploads/banners/`. Button destinations accept same-site paths or HTTPS URLs. Active banners appear in the server-rendered homepage carousel, rotate every six seconds, and include manual controls. Autoplay pauses during pointer/keyboard interaction and is disabled when reduced motion is requested. If there are no active banners, the original static hero remains visible.
 
 For automatic browser reloads while editing the admin, start the optional Vite development server with `docker compose --profile dev up -d --build admin-dev` and open `http://localhost:5173/admin/`. It watches additions, edits, and removals under `admin/src/`, `app/`, `config/`, `bin/`, and `database/`, as well as `public/index.php`, and proxies API requests to the PHP app. The regular `http://localhost:8080/admin/` address serves the static build and does not watch source files; rebuild it after changes with `docker compose --profile build run --rm admin-build`. Node is not needed in production.
 
@@ -67,4 +77,4 @@ Use PHP 8.3+, PDO MySQL, Apache `mod_rewrite`, and set the domain document root 
 
 ## Next stages
 
-Continue with the public storefront and checkout, then define payment, tax, discount, and shipping-rate policies before automating those parts of order entry. Keep storefront rendering server-side and preserve shared-hosting compatibility.
+Define payment, tax, discount, and shipping-rate policies before automating those parts of order entry. Keep storefront rendering server-side and preserve shared-hosting compatibility.

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="box" x1="10" y1="19" x2="38" y2="42" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff5c78"/>
+      <stop offset="1" stop-color="#e51e50"/>
+    </linearGradient>
+    <filter id="shadow" x="2" y="2" width="44" height="45" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.15"/>
+    </filter>
+  </defs>
+  <g opacity=".2" filter="url(#shadow)" stroke="#cf385d" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 16c-2-7-9-11-12-7-3 4 3 8 12 8m0-1c2-7 9-11 12-7 3 4-3 8-12 8"/>
+    <path d="M9 19h30v7H9zM11 26h26v16H11zM24 19v23"/>
+  </g>
+  <g stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 16c-2-7-9-11-12-7-3 4 3 8 12 8m0-1c2-7 9-11 12-7 3 4-3 8-12 8"/>
+    <path d="M9 19h30v7H9zM11 26h26v16H11zM24 19v23"/>
+  </g>
+  <path d="M24 16c-2-7-9-11-12-7-3 4 3 8 12 8m0-1c2-7 9-11 12-7 3 4-3 8-12 8" stroke="#ed315c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M9 19h30v7H9z" fill="url(#box)" stroke="#ed315c" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M11 26h26v16H11z" fill="url(#box)" stroke="#ed315c" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M24 19v23" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
+</svg>

@@ -424,20 +424,8 @@ final class OrdersApi
 
     private function validateCustomizations(int $productId,array $input): array|Response
     {
-        $query=$this->db->prepare('SELECT id,name,field_type,is_required,validation_rules,options,additional_price FROM product_customization_fields WHERE product_id=? AND is_active=1 ORDER BY position,id');$query->execute([$productId]);$fields=$query->fetchAll(PDO::FETCH_ASSOC);$byId=[];foreach($fields as $field)$byId[(int)$field['id']]=$field;
-        $values=[];foreach($input as $row){if(!is_array($row))return $this->error('validation_error','Невалидна персонализация.',422);$id=$this->positiveId($row['field_id']??null);if($id===null||!isset($byId[$id])||isset($values[$id]))return $this->error('validation_error','Персонализацията не съответства на продукта.',422);$values[$id]=$row;}
-        $result=[];
-        foreach($fields as $field){$id=(int)$field['id'];$row=$values[$id]??null;$type=(string)$field['field_type'];$value=$row['value']??null;$file=null;
-            if($type==='checkbox'){$value=filter_var($value,FILTER_VALIDATE_BOOLEAN)?'1':'';}
-            elseif($type==='image'){$file=is_string($row['file_reference']??null)?trim($row['file_reference']):null;$value=null;if((int)$field['is_required']&&(!$file||!preg_match('/^[a-f0-9]{64}\.(?:jpg|png|webp)$/D',$file)))return $this->error('validation_error','Добавете валидно изображение за задължителното поле „'.$field['name'].'“.',422);if($file!==null&&(!preg_match('/^[a-f0-9]{64}\.(?:jpg|png|webp)$/D',$file)||!is_file($this->privateOrderFilesDirectory().DIRECTORY_SEPARATOR.$file)))return $this->error('validation_error','Невалидно изображение за персонализация.',422);}
-            else {$value=is_string($value)?trim($value):'';if(mb_strlen($value)>10000)return $this->error('validation_error','Персонализацията е прекалено дълга.',422);if($type==='select'&&$value!==''&&!in_array($value,json_decode((string)$field['options'],true)?:[],true))return $this->error('validation_error','Изберете валидна стойност за „'.$field['name'].'“.',422);}
-            if((int)$field['is_required']&&($type==='image'?!$file:$value===''))return $this->error('validation_error','Попълнете задължителното поле „'.$field['name'].'“.',422);
-            if(!$row)continue;
-            if(($type==='image'&&!$file)||($type==='checkbox'&&$value==='')||($type!=='image'&&$type!=='checkbox'&&$value===''))continue;
-            $price=$this->moneyCents($field['additional_price']);if($price===null)return $this->error('invalid_price','Доплащането за персонализацията е невалидно.',409);
-            $result[]=['identifier'=>(string)$id,'label'=>(string)$field['name'],'type'=>$type,'value'=>$value,'file_reference'=>$file,'price_cents'=>($type==='checkbox'&&$value==='')?0:$price];
-        }
-        return $result;
+        $result=\Giftcheta\Modules\Commerce\ProductCustomizationValidator::validate($this->db,$productId,$input,fn(string $reference,array $field):bool=>is_file($this->privateOrderFilesDirectory().DIRECTORY_SEPARATOR.$reference));
+        return $result['ok']?$result['customizations']:$this->error($result['code'],$result['message'],$result['status']);
     }
 
     private function applyStockMovements(array $requirements,string $orderNumber,int $adminId): void
@@ -490,9 +478,7 @@ final class OrdersApi
 
     private function effectiveUnitPrice(array $product,?array $variant): ?int
     {
-        $base=$this->moneyCents($product['sale_price']!==null?$product['sale_price']:$product['price']);if($base===null)return null;
-        if($variant===null)return $base;$override=$variant['price']===null?null:$this->moneyCents($variant['price']);if($variant['price']!==null)return $override;
-        $adjustment=$this->moneyCents($variant['price_adjustment'],true);return $adjustment===null?null:$base+$adjustment;
+        return \Giftcheta\Modules\Commerce\ProductPricingService::unitPrice($product,$variant);
     }
 
     private function hasActiveVariants(int $productId): bool

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type * as React from 'react'
 import { createPortal } from 'react-dom'
-import { Check, FileText, Save, X } from 'lucide-react'
+import { FileText, X } from 'lucide-react'
 import { api, json } from '../lib/api'
 import type { Product, ToastState } from '../types/admin'
 import { LazyRichTextEditor } from './LazyRichTextEditor'
 import { DialogFooter } from './DialogFooter'
+import { SaveButton } from './SaveButton'
 import { useUnsavedChanges } from './UnsavedChanges'
 
 type ProductDescriptionDialogProps = {
@@ -79,7 +80,7 @@ export function ProductDescriptionDialog({ product, notify, onClose, onSaved }: 
             {error && <div className="form-error" role="alert">{error}</div>}
           </>}
         </main>
-        <DialogFooter className="description-dialog-footer"><button type="button" className="outline-button" onClick={() => close()}>Отказ</button><button type="submit" className="primary-button" disabled={busy || saving || loadError}><Save size={16}/>{saving ? 'Запазване…' : 'Запази описанието'}<Check size={15}/></button></DialogFooter>
+        <DialogFooter className="description-dialog-footer"><button type="button" className="outline-button" onClick={() => close()}>Отказ</button><SaveButton disabled={busy || saving || Boolean(loadError)} loading={saving}>Запази описанието</SaveButton></DialogFooter>
       </form>
     </section>
   </div>, document.body)

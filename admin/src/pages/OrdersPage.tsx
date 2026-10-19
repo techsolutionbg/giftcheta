@@ -12,6 +12,7 @@ import { TablePanel } from '../components/TablePanel'
 import { DataTable } from '../components/DataTable'
 import { SelectionControl } from '../components/SelectionControl'
 import { ActionMenu } from '../components/ActionMenu'
+import { SaveButton } from '../components/SaveButton'
 import { EmptyState, RecordName } from '../components/CatalogComponents'
 import { useConfirmation } from '../components/UnsavedChanges'
 import { OrderCreateDialog } from './OrderCreateDialog'
@@ -109,7 +110,7 @@ function OrderDetailPage({orderId,notify}:{orderId:string;notify:(message:string
       <section className="panel order-detail-card"><div className="order-card-title"><CreditCard size={18}/><h2>Плащане</h2></div><OrderBadge status={order.payment_status} label={paymentLabels[order.payment_status]}/><p>Наложен платеж · EUR</p>{order.payment_status!=='refunded'&&order.status!=='cancelled'&&<button className="outline-button" onClick={()=>void updatePayment()}>{order.payment_status==='unpaid'?'Отбележи като платена':'Отбележи като възстановена'}</button>}</section>
       <section className="panel order-detail-card"><div className="order-card-title"><ShoppingBag size={18}/><h2>Клиент</h2></div><strong>{order.customer_first_name} {order.customer_last_name}</strong><a href={`mailto:${order.customer_email}`}>{order.customer_email}</a><span>{order.customer_phone||'Без телефон'}</span>{order.customer_id&&<Link to={`/admin/customers?dialog=edit&id=${order.customer_id}`}>Отвори клиентския профил</Link>}{order.customer_note&&<div className="order-note-block"><strong>Бележка от клиента</strong><p>{order.customer_note}</p></div>}</section>
       <section className="panel order-detail-card"><div className="order-card-title"><PackageCheck size={18}/><h2>Адрес за доставка</h2></div>{shipping?<><strong>{shipping.recipient_name}</strong><span>{shipping.address_line1}{shipping.address_line2?`, ${shipping.address_line2}`:''}</span><span>{shipping.postal_code?`${shipping.postal_code} `:''}{shipping.city}, {shipping.country_code}</span><span>{shipping.phone||'Без телефон'}</span></>:<p className="muted-cell">Няма адрес за доставка.</p>}</section>
-      <section className="panel order-detail-card"><div className="order-card-title"><Clock3 size={18}/><h2>Вътрешна бележка</h2></div><textarea rows={5} value={note} maxLength={4000} onChange={event=>setNote(event.target.value)} placeholder="Само за администрацията…"/><button className="outline-button" disabled={savingNote||note===(order.admin_note||'')} onClick={()=>void saveNote()}>{savingNote?'Запис…':'Запази бележката'}</button></section>
+      <section className="panel order-detail-card"><div className="order-card-title"><Clock3 size={18}/><h2>Вътрешна бележка</h2></div><textarea rows={5} value={note} maxLength={4000} onChange={event=>setNote(event.target.value)} placeholder="Само за администрацията…"/><SaveButton type="button" disabled={savingNote||note===(order.admin_note||'')} loading={savingNote} loadingLabel="Запис…" onClick={()=>void saveNote()}>Запази бележката</SaveButton></section>
     </aside></div>
   </div>
 }

@@ -2,7 +2,7 @@ import { api, json, setCsrfToken } from './lib/api'
 import type { Admin, ToastState } from './types/admin'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Check, ChevronRight, CircleHelp, LayoutDashboard, LogOut, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, Settings, ShoppingBag, Sun, Tags, Users, X } from 'lucide-react'
+import { Bell, Check, ChevronRight, CircleHelp, LayoutDashboard, LogOut, Menu, Moon, Package, PanelLeftClose, PanelLeftOpen, Settings, ShoppingBag, Sun, Tags, Users, X, Images } from 'lucide-react'
 import { GlobalLoadingBar } from './components/GlobalLoadingBar'
 import { NavLink } from './components/Navigation'
 import { Login } from './components/Login'
@@ -12,6 +12,7 @@ import { CategoriesPage } from './pages/CategoriesPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { CustomersPage } from './pages/CustomersPage'
 import { OrdersPage } from './pages/OrdersPage'
+import { BannersPage } from './pages/BannersPage'
 import { useConfirmDiscardAll } from './components/UnsavedChanges'
 import { GlobalSearch } from './components/GlobalSearch'
 import { SidePanel } from './components/SidePanel'
@@ -36,6 +37,7 @@ export default function App() {
     : pathname.startsWith('/admin/categories') ? 'Категории'
       : pathname.startsWith('/admin/orders') ? 'Поръчки'
         : pathname.startsWith('/admin/customers') ? 'Клиенти'
+          : pathname.startsWith('/admin/banners') ? 'Банери'
           : pathname.startsWith('/admin/settings') ? 'Настройки' : 'Табло'
   const confirmDiscardAll = useConfirmDiscardAll()
   const notify = useCallback((message: string, kind: ToastState['kind'] = 'success') => { setToast({ message, kind }); window.setTimeout(() => setToast(null), 3200) }, [])
@@ -126,6 +128,7 @@ export default function App() {
         <NavLink to="/admin" icon={<LayoutDashboard/>} label="Табло"/>
         <NavLink to="/admin/products" icon={<Package/>} label="Продукти"/>
         <NavLink to="/admin/categories" icon={<Tags/>} label="Категории"/>
+        <NavLink to="/admin/banners" icon={<Images/>} label="Банери"/>
         <NavLink to="/admin/settings" icon={<Settings/>} label="Настройки"/>
       </nav>
       <div className="nav-divider" aria-hidden="true"/>
@@ -146,19 +149,20 @@ export default function App() {
     <main className="main-area">
       <header className="topbar"><div className="topbar-heading">{mobileViewport
         ? <SidePanel open={mobileNavOpen} onOpenChange={setMobileNavOpen} side="left" title="Навигация" panelClassName="mobile-navigation-panel" trigger={<button className="icon-button sidebar-toggle" title="Отвори менюто" aria-label="Отвори менюто"><Menu size={18}/></button>}>
-          <div className="mobile-navigation-content"><GlobalSearch/><nav className="nav-list"><NavLink to="/admin" icon={<LayoutDashboard/>} label="Табло"/><NavLink to="/admin/products" icon={<Package/>} label="Продукти"/><NavLink to="/admin/categories" icon={<Tags/>} label="Категории"/><NavLink to="/admin/settings" icon={<Settings/>} label="Настройки"/><NavLink to="/admin/orders" icon={<ShoppingBag/>} label="Поръчки"/><NavLink to="/admin/customers" icon={<Users/>} label="Клиенти"/></nav></div>
+          <div className="mobile-navigation-content"><GlobalSearch/><nav className="nav-list"><NavLink to="/admin" icon={<LayoutDashboard/>} label="Табло"/><NavLink to="/admin/products" icon={<Package/>} label="Продукти"/><NavLink to="/admin/categories" icon={<Tags/>} label="Категории"/><NavLink to="/admin/banners" icon={<Images/>} label="Банери"/><NavLink to="/admin/settings" icon={<Settings/>} label="Настройки"/><NavLink to="/admin/orders" icon={<ShoppingBag/>} label="Поръчки"/><NavLink to="/admin/customers" icon={<Users/>} label="Клиенти"/></nav></div>
           </SidePanel>
         : <button className="icon-button sidebar-toggle" title={sidebarOpen?'Затвори страничната лента':'Отвори страничната лента'} aria-label={sidebarOpen?'Затвори страничната лента':'Отвори страничната лента'} aria-controls="admin-sidebar" aria-expanded={sidebarOpen} onClick={()=>setSidebarOpen(open=>!open)}>{sidebarOpen?<PanelLeftClose size={18}/>:<PanelLeftOpen size={18}/>}</button>}<h1 className="topbar-title">{topbarTitle}</h1></div>{!mobileViewport&&<GlobalSearch/>}<div className="topbar-actions"><button className="icon-button" title="Смени тема" aria-label="Смени тема" onClick={() => setDark(!dark)}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button><button className="icon-button notification" title="Известия" aria-label="Известия"><Bell size={18}/></button><div className="top-avatar">{admin.name.slice(0,1).toUpperCase()}</div><button className="mobile-menu" title="Отвори менюто" aria-label="Отвори менюто"><Menu/></button></div></header>
       <Routes>
         <Route path="/admin" element={<Dashboard admin={admin}/>} />
         <Route path="/admin/products" element={<ProductsPage notify={notify}/>} />
         <Route path="/admin/categories" element={<CategoriesPage notify={notify}/>} />
+        <Route path="/admin/banners" element={<BannersPage notify={notify}/>} />
         <Route path="/admin/orders" element={<OrdersPage notify={notify}/>} />
         <Route path="/admin/orders/:id" element={<OrdersPage notify={notify}/>} />
         <Route path="/admin/customers" element={<CustomersPage notify={notify}/>} />
         <Route path="/admin/customers/new" element={<CustomersPage notify={notify}/>} />
         <Route path="/admin/customers/:id/edit" element={<CustomersPage notify={notify}/>} />
-        <Route path="/admin/settings" element={<SettingsPage sidebarWidth={sidebarWidth} onSidebarWidthChange={setSidebarWidth}/>} />
+        <Route path="/admin/settings" element={<SettingsPage sidebarWidth={sidebarWidth} onSidebarWidthChange={setSidebarWidth} notify={notify}/>} />
         <Route path="*" element={<Navigate to="/admin" replace/>}/>
       </Routes>
     </main>

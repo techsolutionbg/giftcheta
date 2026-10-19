@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
 import type * as React from 'react'
 import { createPortal } from 'react-dom'
-import { Check, FileText, Save, X } from 'lucide-react'
+import { FileText, X } from 'lucide-react'
 import { LazyRichTextEditor } from './LazyRichTextEditor'
 import { DialogFooter } from './DialogFooter'
+import { SaveButton } from './SaveButton'
 import { useUnsavedChanges } from './UnsavedChanges'
 
 export function DescriptionEditorDialog({ title, subject, initialValue, onSave, onClose }: {
@@ -50,7 +51,7 @@ export function DescriptionEditorDialog({ title, subject, initialValue, onSave, 
       </header>
       <form className="description-dialog-form" onSubmit={submit}>
         <main className="description-dialog-content"><p className="description-dialog-help">Редактирайте описанието с блокове, форматиране и медийно съдържание.</p><LazyRichTextEditor value={value} onChange={setValue} ariaLabel={title}/>{error&&<div className="form-error" role="alert">{error}</div>}</main>
-        <DialogFooter className="description-dialog-footer"><button type="button" className="outline-button" onClick={() => void close()}>Отказ</button><button type="submit" className="primary-button" disabled={saving}><Save size={16}/>{saving ? 'Запазване…' : 'Запази описанието'}<Check size={15}/></button></DialogFooter>
+        <DialogFooter className="description-dialog-footer"><button type="button" className="outline-button" onClick={() => void close()}>Отказ</button><SaveButton disabled={saving} loading={saving}>Запази описанието</SaveButton></DialogFooter>
       </form>
     </section>
   </div>, document.body)

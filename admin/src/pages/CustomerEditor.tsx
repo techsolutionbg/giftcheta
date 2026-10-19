@@ -1,13 +1,14 @@
 import { api, json } from '../lib/api'
 import type { Customer, CustomerAddress, ToastState } from '../types/admin'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { Check, KeyRound, Plus, Save, Trash2, X } from 'lucide-react'
+import { KeyRound, Plus, Trash2, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { FormField } from '../components/CatalogComponents'
 import { Dropdown } from '../components/Dropdown'
 import { SelectionControl } from '../components/SelectionControl'
 import { DialogFooter } from '../components/DialogFooter'
+import { SaveButton } from '../components/SaveButton'
 import { useConfirmation, useUnsavedChanges } from '../components/UnsavedChanges'
 
 type CustomerForm = { first_name: string; last_name: string; email: string; phone: string; phone_country_code: string; status: string; admin_notes: string }
@@ -217,7 +218,7 @@ export function CustomerEditor({ customerId, onClose, onSaved, notify }: { custo
 
     </>}
       </div>
-      <DialogFooter className="customer-editor-footer"><button type="button" className="outline-button" onClick={()=>void close()}>Отказ</button><button type="submit" form="customer-editor-form" className="primary-button" disabled={saving}>{saving?'Запазване…':'Запази клиента'}<Check size={15}/></button></DialogFooter>
+      <DialogFooter className="customer-editor-footer"><button type="button" className="outline-button" onClick={()=>void close()}>Отказ</button><SaveButton form="customer-editor-form" disabled={saving} loading={saving}>Запази клиента</SaveButton></DialogFooter>
     </section>
   </div>
   {addressesOpen&&createPortal(<div className="modal-backdrop customer-address-dialog-backdrop" data-state={addressesClosing?'closed':'open'} onMouseDown={event=>{if(event.target===event.currentTarget)void closeAddressManager()}}>
@@ -236,7 +237,7 @@ export function CustomerEditor({ customerId, onClose, onSaved, notify }: { custo
       </div></form>}
       {addresses.length===0?<div className="customer-address-empty">Няма добавени адреси.</div>:<div className="customer-address-list">{addresses.map(address=><article className="customer-address-card" key={address.id}><div><strong>{address.recipient_name}{Boolean(address.is_default)&&<span className="customer-default-badge">Основен</span>}</strong><p>{address.address_line1}{address.address_line2?`, ${address.address_line2}`:''}, {address.postal_code?`${address.postal_code} `:''}{address.city}, {address.country_code}</p><small>{address.phone||'Без телефон'}</small></div><div className="customer-address-actions"><button type="button" className="outline-button tiny" onClick={()=>openAddress(address)}>Редактирай</button><button type="button" className="icon-button compact danger-icon" title="Изтрий адреса" aria-label="Изтрий адреса" onClick={()=>void deleteAddress(address)}><Trash2 size={15}/></button></div></article>)}</div>}
       </div>
-      <DialogFooter className="customer-address-form-actions customer-address-dialog-footer"><button type="button" className="outline-button" onClick={()=>void closeAddressManager()}>Отказ</button><button type="submit" form="customer-address-form" className="primary-button" disabled={saving}><Save size={15}/> Запази адреса</button></DialogFooter>
+      <DialogFooter className="customer-address-form-actions customer-address-dialog-footer"><button type="button" className="outline-button" onClick={()=>void closeAddressManager()}>Отказ</button><SaveButton form="customer-address-form" disabled={saving}>Запази адреса</SaveButton></DialogFooter>
     </section>
   </div>, document.body)}</>
 }
