@@ -191,7 +191,7 @@ final class CatalogApi
         try {
             $q = $this->db->prepare('INSERT INTO products (name,slug,sku,short_description,description,price,sale_price,status,inventory_mode,stock_quantity,is_available,seo_title,seo_description) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
             $q->execute([$name,$slug,$sku,$this->nullableText($d['short_description'] ?? null),$this->nullableText($d['description'] ?? null),$price,$this->nullableMoney($d['sale_price'] ?? null),$status,$mode,$qty,$mode === 'tracked' ? (int) ($qty > 0) : $this->bool($d['is_available'] ?? true),$this->nullableText($d['seo_title'] ?? null),$this->nullableText($d['seo_description'] ?? null)]);
-            $id = (int) $this->db->lastInsertId(); $this->syncCategories($id,$d['category_ids'] ?? []);
+            $id = (int) $this->db->lastInsertId(); $this->syncCategories($id,$d['category_ids'] ?? []); $this->ensurePersonalizationRequestField($id);
             if($mode==='tracked'&&$qty>0)$this->db->prepare("INSERT INTO product_stock_movements (product_id,quantity_delta,quantity_after,reason,note,admin_id) VALUES (?,?,?,'initial_stock','Initial stock on product creation',?)")->execute([$id,$qty,$qty,$_SESSION['admin_id']]);
             $this->db->commit(); return Response::json(['data'=>['id'=>$id]],201);
         } catch (Throwable $error) { if ($this->db->inTransaction()) $this->db->rollBack(); throw $error; }
@@ -441,6 +441,15 @@ final class CatalogApi
     private function validCategoryIds(mixed $ids): bool
     { if(!is_array($ids))return false;$normalized=array_values(array_unique(array_filter(array_map('intval',$ids),fn($id)=>$id>0)));if(count($normalized)!==count($ids))return $ids===[];if(!$normalized)return true;$in=implode(',',array_fill(0,count($normalized),'?'));$q=$this->db->prepare("SELECT COUNT(*) FROM categories WHERE id IN ({$in}) AND deleted_at IS NULL");$q->execute($normalized);return (int)$q->fetchColumn()===count($normalized); }
     private function existsActiveCategory(int $id): bool {$q=$this->db->prepare('SELECT 1 FROM categories WHERE id=? AND deleted_at IS NULL');$q->execute([$id]);return (bool)$q->fetchColumn();}
+    private function ensurePersonalizationRequestField(int $productId): void
+    {
+        $name='Опишете желаната персонализация';
+        $exists=$this->db->prepare('SELECT 1 FROM product_customization_fields WHERE product_id=? AND name=? LIMIT 1');$exists->execute([$productId,$name]);
+        if($exists->fetchColumn())return;
+        $position=$this->db->prepare('SELECT COALESCE(MAX(position)+1,0) FROM product_customization_fields WHERE product_id=?');$position->execute([$productId]);
+        $insert=$this->db->prepare('INSERT INTO product_customization_fields (product_id,name,field_type,is_required,position,validation_rules,options,additional_price,is_active) VALUES (?,? ,\'textarea\',0,?,?,NULL,\'0.00\',1)');
+        $insert->execute([$productId,$name,(int)$position->fetchColumn(),json_encode(['max_length'=>500],JSON_THROW_ON_ERROR)]);
+    }
     private function variantKey(array $options): string
     { $clean=[];foreach($options as $name=>$value){$name=mb_strtolower(trim((string)$name));$value=mb_strtolower(trim((string)$value));if($name!==''&&$value!=='')$clean[$name]=$value;}ksort($clean,SORT_STRING);return hash('sha256',json_encode($clean,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)); }
     private function existsVariantKey(int $product,string $key,?int $exclude=null): bool

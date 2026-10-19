@@ -15,37 +15,80 @@ use PDO;
 final class StorefrontController
 {
     private CatalogRepository $catalog;
+    private ReviewRepository $reviews;
     private StorefrontView $view;
     private CartService $cart;
     private CartSessionManager $cartSessions;
     private string $baseUrl;
 
     public function __construct(private readonly PDO $db,private readonly string $projectRoot,Config $config)
-    { $this->catalog=new CatalogRepository($db);$this->view=new StorefrontView($projectRoot.'/app/Modules/Storefront/Views');$this->baseUrl=rtrim((string)$config->get('app.url',''),'/');$repo=new CartRepository($db);$files=new CartFileStorage($db,$projectRoot);$this->cart=new CartService($db,$repo,$files);$this->cartSessions=new CartSessionManager(); }
+    { $this->catalog=new CatalogRepository($db);$this->reviews=new ReviewRepository($db);$this->view=new StorefrontView($projectRoot.'/app/Modules/Storefront/Views');$this->baseUrl=rtrim((string)$config->get('app.url',''),'/');$repo=new CartRepository($db);$files=new CartFileStorage($db,$projectRoot);$this->cart=new CartService($db,$repo,$files);$this->cartSessions=new CartSessionManager(); }
 
     public function home(Request $request): Response
     { $categories=$this->catalog->homeCategories();$products=$this->catalog->latestProducts();$banners=$this->catalog->homeBanners();return $this->html('home',['title'=>'Подаръци за всеки повод','description'=>'Разгледайте идеи за подаръци за рожден ден, имен ден и специални поводи.','canonical'=>$this->absolute('/'),'categories'=>$categories,'products'=>$products,'banners'=>$banners,'schema'=>$this->webSiteSchema()]); }
 
     public function products(Request $request): Response
-    { $products=$this->catalog->latestProducts(100);return $this->html('products',['title'=>'Всички продукти','description'=>'Разгледайте всички подаръци в каталога на Giftcheta.','canonical'=>$this->absolute('/products'),'items'=>$products,'total'=>count($products),'schema'=>null]); }
+    { $filters=$this->filters($request);$result=$this->catalog->products($filters);$categories=$this->catalog->categories();$data=['title'=>'Всички продукти','description'=>'Разгледайте всички подаръци в каталога на Giftcheta.','canonical'=>$this->absolute('/products'),'catalogLabel'=>'Продукти','items'=>$result['items'],'total'=>$result['total'],'filters'=>$filters,'facets'=>$this->catalog->filterFacets(),'categories'=>$categories,'pages'=>max(1,(int)ceil($result['total']/$filters['per_page'])),'schema'=>null,'noindex'=>$this->hasFilters($request)];return $this->isAjax($request)?$this->catalogResultsFragment($data):$this->html('products',$data); }
+
+    public function favorites(Request $request): Response
+    { return $this->html('favorites',['title'=>'Любими продукти','description'=>'Запазените от вас любими подаръци.','canonical'=>$this->absolute('/favorites'),'schema'=>null,'noindex'=>true]); }
+
+    public function favoriteProducts(Request $request): Response
+    {
+        $raw=(string)($request->query['ids']??'');
+        if(strlen($raw)>1200)return new Response('Невалиден списък с продукти.',422,['Content-Type'=>'text/plain; charset=utf-8','X-Content-Type-Options'=>'nosniff']);
+        $parts=$raw===''?[]:explode(',',$raw);
+        if(count($parts)>100||array_filter($parts,static fn(string $id):bool=>!ctype_digit($id)||strlen($id)>10||((int)$id)<1))return new Response('Невалиден списък с продукти.',422,['Content-Type'=>'text/plain; charset=utf-8','X-Content-Type-Options'=>'nosniff']);
+        $items=$this->catalog->favoriteProducts($parts);
+        $view=$this->view;$csrfToken=$this->cartSessions->start()['csrf'];
+        ob_start();
+        foreach($items as $item)require __DIR__.'/Views/partials/product-card.php';
+        $html=ob_get_clean();
+        return new Response($html,200,['Content-Type'=>'text/html; charset=utf-8','X-Content-Type-Options'=>'nosniff','Cache-Control'=>'private, no-store']);
+    }
 
     public function category(Request $request,array $params): Response
     {
         $category=$this->catalog->category((string)$params['slug']);if(!$category)return $this->notFound();$filters=$this->filters($request);$result=$this->catalog->categoryProducts((int)$category['id'],$filters);$categories=$this->catalog->categories();$children=array_values(array_filter($categories,static fn(array $c):bool=>(int)$c['parent_id']===(int)$category['id']));$breadcrumbs=$this->breadcrumbs($category,$categories);$canonical=$this->absolute('/category/'.$category['slug'].($filters['page']>1?'?page='.$filters['page']:''));
         $description=(string)($category['seo_description']?:$this->plainDescription($category['description']));$schema=$this->breadcrumbSchema($breadcrumbs,$canonical);
-        return $this->html('category',['title'=>$category['seo_title']?:$category['name'],'description'=>$description,'canonical'=>$canonical,'category'=>$category,'breadcrumbs'=>$breadcrumbs,'children'=>$children,'items'=>$result['items'],'total'=>$result['total'],'filters'=>$filters,'pages'=>max(1,(int)ceil($result['total']/$filters['per_page'])),'schema'=>$schema,'noindex'=>$this->hasFilters($request)]);
+        $data=['title'=>$category['seo_title']?:$category['name'],'description'=>$description,'canonical'=>$canonical,'catalogLabel'=>'Продукти в категорията','category'=>$category,'breadcrumbs'=>$breadcrumbs,'children'=>$children,'categories'=>$categories,'facets'=>$this->catalog->filterFacets((int)$category['id'],$filters['categories']),'items'=>$result['items'],'total'=>$result['total'],'filters'=>$filters,'pages'=>max(1,(int)ceil($result['total']/$filters['per_page'])),'schema'=>$schema,'noindex'=>$this->hasFilters($request)];
+        return $this->isAjax($request)?$this->catalogResultsFragment($data):$this->html('category',$data);
     }
 
     public function product(Request $request,array $params): Response
     {
         $product=$this->catalog->product((string)$params['slug']);if(!$product)return $this->notFound();$product['images']=$this->catalog->productImages((int)$product['id']);$product['variants']=$this->catalog->variants((int)$product['id']);$product['fields']=$this->catalog->customizationFields((int)$product['id']);$product['categories']=$this->catalog->productCategories((int)$product['id']);
         $requestedVariantId=filter_var($request->query['variant']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])?:null;$selectedId=$requestedVariantId;$selected=null;$product['base_price_cents']=ProductPricingService::moneyCents((string)($product['sale_price']??$product['price']))??0;
-        foreach($product['variants'] as &$variant){$variant['option_values']=json_decode((string)$variant['option_values'],true)?:[];$variant['effective_price']=$variant['price']!==null?(string)$variant['price']:(string)((float)($product['sale_price']??$product['price'])+(float)$variant['price_adjustment']);$variant['effective_price_cents']=ProductPricingService::moneyCents($variant['effective_price'])??0;$variant['available']=ProductPricingService::available($variant);}unset($variant);
+        foreach($product['variants'] as &$variant){$variant['option_values']=json_decode((string)$variant['option_values'],true)?:[];$variant['regular_effective_price']=$variant['price']!==null?(string)$variant['price']:(string)((float)$product['price']+(float)$variant['price_adjustment']);$variant['regular_effective_price_cents']=ProductPricingService::moneyCents($variant['regular_effective_price'])??0;$variant['effective_price']=$variant['price']!==null?(string)$variant['price']:(string)((float)($product['sale_price']??$product['price'])+(float)$variant['price_adjustment']);$variant['effective_price_cents']=ProductPricingService::moneyCents($variant['effective_price'])??0;$variant['available']=ProductPricingService::available($variant);}unset($variant);
         foreach($product['fields'] as &$field){$field['additional_price_cents']=ProductPricingService::moneyCents((string)$field['additional_price'])??0;$field['options_list']=json_decode((string)$field['options'],true)?:[];}unset($field);
         $defaultVariantId=filter_var($product['default_variant_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])?:null;$variantForSelection=static function(?int $id)use($product):?array{if(!$id)return null;foreach($product['variants'] as $variant)if((int)$variant['id']===$id)return $variant;return null;};
         if($selectedId!==null)$selected=$variantForSelection($selectedId);if(!$selected){$selectedId=$defaultVariantId;$selected=$variantForSelection($selectedId);}if(!$selected)$selectedId=null;
-        $base=(string)($product['sale_price']??$product['price']);$effectivePrice=$selected['effective_price']??$base;$baseAvailable=(bool)$product['is_available']&&($product['inventory_mode']!=='tracked'||(int)$product['stock_quantity']>0);$available=$selected?$selected['available']:($product['variants']?(bool)array_filter($product['variants'],static fn(array $v):bool=>$v['available']):$baseAvailable);$breadcrumbs=$this->productBreadcrumbs($product['categories']);$canonical=$this->absolute('/product/'.$product['slug']);$desc=(string)($product['seo_description']?:$product['short_description']?:$this->plainDescription($product['description']));$schema=$this->productSchema($product,$canonical,$breadcrumbs);
-        return $this->html('product',['title'=>$product['seo_title']?:$product['name'],'description'=>$desc,'canonical'=>$canonical,'product'=>$product,'selected'=>$selected,'selectedId'=>$selectedId,'effectivePrice'=>$effectivePrice,'available'=>$available,'breadcrumbs'=>$breadcrumbs,'schema'=>$schema]);
+        $base=(string)($product['sale_price']??$product['price']);$effectivePrice=$selected['effective_price']??$base;$regularEffectivePrice=$selected['regular_effective_price']??(string)$product['price'];$regularPriceCents=ProductPricingService::moneyCents($regularEffectivePrice)??0;$baseAvailable=(bool)$product['is_available']&&($product['inventory_mode']!=='tracked'||(int)$product['stock_quantity']>0);$available=$selected?$selected['available']:($product['variants']?(bool)array_filter($product['variants'],static fn(array $v):bool=>$v['available']):$baseAvailable);$breadcrumbs=$this->productBreadcrumbs($product['categories']);$canonical=$this->absolute('/product/'.$product['slug']);$desc=(string)($product['seo_description']?:$product['short_description']?:$this->plainDescription($product['description']));$schema=$this->productSchema($product,$canonical,$breadcrumbs);
+        return $this->html('product',['title'=>$product['seo_title']?:$product['name'],'description'=>$desc,'canonical'=>$canonical,'product'=>$product,'selected'=>$selected,'selectedId'=>$selectedId,'effectivePrice'=>$effectivePrice,'regularPriceCents'=>$regularPriceCents,'available'=>$available,'breadcrumbs'=>$breadcrumbs,'reviews'=>$this->reviews->forProduct((int)$product['id']),'schema'=>$schema]);
+    }
+
+    public function submitReview(Request $request,array $params): Response
+    {
+        $this->cartSessions->start();
+        if(!$this->cartSessions->validCsrf($request))return Response::json(['error'=>['code'=>'csrf_invalid','message'=>'Заявката изтече. Обновете страницата и опитайте отново.']],419);
+        $product=$this->catalog->product((string)$params['slug']);
+        if(!$product)return Response::json(['error'=>['code'=>'product_not_found','message'=>'Продуктът не е намерен.']],404);
+        $name=trim((string)($request->form['author_name']??''));$description=trim((string)($request->form['description']??''));
+        $name=preg_replace('/[\x00-\x1F\x7F]/u','',$name)??'';$description=preg_replace('/\x00/u','',$description)??'';
+        $rating=filter_var($request->form['rating']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>5]]);
+        if($name===''||mb_strlen($name)>120||$description===''||mb_strlen($description)>3000||$rating===false)return Response::json(['error'=>['code'=>'validation_error','message'=>'Попълнете име, описание и оценка от 1 до 5 звезди. Името е до 120, а описанието до 3000 знака.']],422);
+        $review=$this->reviews->create((int)$product['id'],$name,$description,(int)$rating);
+        if(!$review)return Response::json(['error'=>['code'=>'review_unavailable','message'=>'Отзивът не можа да бъде публикуван. Опитайте отново.']],500);
+        return Response::json(['data'=>['review'=>$review,'summary'=>$this->reviews->forProduct((int)$product['id']),'message'=>'Благодарим ви! Отзивът е публикуван.']],201);
+    }
+
+    public function reviewsPage(Request $request,array $params): Response
+    {
+        $product=$this->catalog->product((string)$params['slug']);
+        if(!$product)return Response::json(['error'=>['code'=>'product_not_found','message'=>'Продуктът не е намерен.']],404);
+        $page=filter_var($request->query['page']??1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>1000000]]);
+        if($page===false)return Response::json(['error'=>['code'=>'validation_error','message'=>'Невалидна страница.']],422);
+        return new Response(json_encode(['data'=>$this->reviews->forProduct((int)$product['id'],(int)$page,10)],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),200,['Content-Type'=>'application/json; charset=utf-8','X-Content-Type-Options'=>'nosniff','Cache-Control'=>'private, no-store']);
     }
 
     public function search(Request $request): Response
@@ -65,14 +108,20 @@ final class StorefrontController
 
     private function html(string $name,array $data,int $status=200): Response
     { $context=$this->cartSessions->start();$cartSummary=$this->cart->summary($context['key']);$data['baseUrl']=$this->baseUrl;$data['view']=$this->view;$data['cartCount']=$cartSummary['count'];$data['cartSubtotalCents']=$cartSummary['subtotal_cents'];$data['headerCategories']=$this->catalog->categories();$data+= (new StoreSettingsRepository($this->db))->shipping();$data['csrfToken']=$context['csrf'];$data['cartFlash']=$this->cartSessions->consumeFlash();$body=$this->view->render($name,$data);return new Response($body,$status,['Content-Type'=>'text/html; charset=utf-8','X-Content-Type-Options'=>'nosniff','Referrer-Policy'=>'strict-origin-when-cross-origin','Cache-Control'=>'private, no-store, max-age=0']); }
+    private function catalogResultsFragment(array $data): Response
+    { $context=$this->cartSessions->start();$data['view']=$this->view;$data['csrfToken']=$context['csrf'];$body=$this->view->render('catalog-results-fragment',$data);return new Response($body,200,['Content-Type'=>'text/html; charset=utf-8','X-Content-Type-Options'=>'nosniff','Cache-Control'=>'private, no-store']); }
+    private function isAjax(Request $request): bool
+    { foreach($request->headers as $name=>$value)if(strtolower((string)$name)==='x-requested-with')return strtolower((string)$value)==='xmlhttprequest';return false; }
     private function notFound(): Response { return $this->html('404',['title'=>'Страницата не е намерена','description'=>'Търсената страница не съществува.','canonical'=>null,'schema'=>null,'noindex'=>true],404); }
     private function absolute(string $path): string { return $this->baseUrl.$path; }
     private function xml(string $value): string { return htmlspecialchars($value,ENT_XML1|ENT_QUOTES,'UTF-8'); }
     private function plainDescription(?string $text): string { $plain=trim(preg_replace('/\s+/u',' ',strip_tags((string)$text))??'');return mb_substr($plain,0,320); }
     private function filters(Request $request): array
-    { $query=$request->query;$min=$this->validPrice($query['min_price']??null);$max=$this->validPrice($query['max_price']??null);if($min!==null&&$max!==null&&$min>$max)[$min,$max]=[$max,$min];$sort=(string)($query['sort']??'latest');if(!in_array($sort,['latest','price_asc','price_desc','name'],true))$sort='latest';return ['min_price'=>$min,'max_price'=>$max,'in_stock'=>in_array((string)($query['in_stock']??''),['1','true','on'],true),'sort'=>$sort,'page'=>max(1,min(10000,(int)($query['page']??1))),'per_page'=>24]; }
+    { $query=$request->query;$min=$this->validPrice($query['min_price']??null);$max=$this->validPrice($query['max_price']??null);if($min!==null&&$max!==null&&$min>$max)[$min,$max]=[$max,$min];$sort=(string)($query['sort']??'latest');if(!in_array($sort,['latest','price_asc','price_desc','name'],true))$sort='latest';$columns=filter_var($query['columns']??4,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>4]]);return ['min_price'=>$min,'max_price'=>$max,'in_stock'=>in_array((string)($query['in_stock']??''),['1','true','on'],true),'on_sale'=>in_array((string)($query['on_sale']??''),['1','true','on'],true),'sort'=>$sort,'columns'=>$columns===false?4:$columns,'colors'=>$this->validChoices($query['color']??[]),'sizes'=>$this->validChoices($query['size']??[]),'categories'=>$this->validIds($query['category']??[]),'page'=>max(1,min(10000,(int)($query['page']??1))),'per_page'=>24]; }
+    private function validChoices(mixed $raw): array { if(!is_array($raw))$raw=[$raw];$values=[];foreach(array_slice($raw,0,30) as $value){if(!is_scalar($value))continue;$value=trim((string)$value);if($value!==''&&mb_strlen($value)<=80)$values[$value]=$value;}return array_values($values); }
+    private function validIds(mixed $raw): array { if(!is_array($raw))$raw=[$raw];$ids=[];foreach(array_slice($raw,0,50) as $value){$id=filter_var($value,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);if($id!==false)$ids[(int)$id]=(int)$id;}return array_values($ids); }
     private function validPrice(mixed $raw): ?string { if(!is_string($raw)&&!is_numeric($raw))return null;$s=trim((string)$raw);if(!preg_match('/^\d{1,8}(?:\.\d{1,2})?$/D',$s))return null;return number_format((float)$s,2,'.',''); }
-    private function hasFilters(Request $request): bool { foreach(['min_price','max_price','in_stock','sort','page'] as $key)if(isset($request->query[$key])&&$request->query[$key]!==''&& !($key==='page'&&(int)$request->query[$key]===1))return true;return false; }
+    private function hasFilters(Request $request): bool { foreach(['min_price','max_price','in_stock','on_sale','sort','page','color','size','category'] as $key)if(isset($request->query[$key])&&$request->query[$key]!==''&& !($key==='page'&&(int)$request->query[$key]===1)&&!($key==='sort'&&$request->query[$key]==='latest'))return true;return false; }
     private function breadcrumbs(array $category,array $categories): array { $map=[];foreach($categories as $item)$map[(int)$item['id']]=$item;$trail=[];$current=$category;$seen=[];while($current){$id=(int)$current['id'];if(isset($seen[$id]))break;$seen[$id]=true;array_unshift($trail,$current);$current=isset($current['parent_id'])?$map[(int)$current['parent_id']]??null:null;}return $trail; }
     private function productBreadcrumbs(array $categories): array { return count($categories)?[$categories[0]]:[]; }
     private function breadcrumbSchema(array $crumbs,string $canonical): array { $items=[['@type'=>'ListItem','position'=>1,'name'=>'Начало','item'=>$this->absolute('/')]];foreach($crumbs as $i=>$crumb)$items[]=['@type'=>'ListItem','position'=>$i+2,'name'=>$crumb['name'],'item'=>$this->absolute('/category/'.$crumb['slug'])];return ['@context'=>'https://schema.org','@type'=>'BreadcrumbList','itemListElement'=>$items]; }
