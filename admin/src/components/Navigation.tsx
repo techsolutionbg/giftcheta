@@ -16,6 +16,7 @@ export function Breadcrumbs() {
     : pathname.startsWith('/admin/orders') ? 'Поръчки'
     : pathname.startsWith('/admin/customers') ? 'Клиенти'
     : pathname.startsWith('/admin/settings') ? 'Настройки'
+    : pathname.startsWith('/admin/banners') ? 'Банери'
     : 'Табло'
   const items = route === 'Табло' ? [{ label: route, to: null }] : [{ label: 'Табло', to: '/admin' }, { label: route, to: null }]
   return <nav className="breadcrumbs page-breadcrumbs" aria-label="Навигационна пътека">{items.map((item,index)=><span className="breadcrumb-item" key={item.label}>{index>0&&<ChevronRight size={14}/>}{item.to?<Link to={item.to}>{item.label}</Link>:<strong aria-current="page">{item.label}</strong>}</span>)}</nav>

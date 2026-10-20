@@ -7,6 +7,7 @@ $needsCustomization=(bool)($item['has_required_customizations']??false);
 $directVariantAdd=$hasVariants&&!$needsCustomization&&!empty($item['can_direct_variant_add']);
 $available=$hasVariants?(bool)($item['has_available_variant']??false):((bool)($item['is_available']??false)&&(($item['inventory_mode']??'boolean')!=='tracked'||(int)($item['stock_quantity']??0)>0));
 $onSale=$regularPublicPrice>0&&$price>0&&$price<$regularPublicPrice;
+$regularPriceCents=(int)round($regularPublicPrice*100);$currentPriceCents=(int)round($price*100);$savedCents=max(0,$regularPriceCents-$currentPriceCents);$discountPercent=$regularPriceCents>0?(int)round($savedCents/$regularPriceCents*100):0;
 $favoriteProduct=['id'=>(int)$item['id'],'name'=>(string)$item['name'],'slug'=>(string)$item['slug'],'image'=>$image,'price'=>$price];
 $favoriteJson=json_encode($favoriteProduct,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
 ?>
@@ -15,7 +16,7 @@ $favoriteJson=json_encode($favoriteProduct,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED
     <a href="/product/<?= $view->e($item['slug']) ?>" aria-label="<?= $view->e($item['name']) ?>">
       <?php if($image): ?><img src="<?= $view->e($image) ?>" alt="<?= $view->e($item['image_alt']?:$item['name']) ?>" loading="lazy"><?php else: ?><div class="image-placeholder" aria-hidden="true"></div><?php endif; ?>
     </a>
-    <?php if($onSale): ?><span class="product-card-promo">Промоция</span><?php endif; ?>
+    <span class="product-card-promo" data-card-promo <?= $onSale?'':'hidden' ?>><?php if($onSale): ?>Спестявате <?= $view->e($view->money($savedCents/100)) ?> · <?= $discountPercent ?>%<?php endif; ?></span>
     <button class="product-card-favorite" type="button" data-favorite-toggle aria-pressed="false" aria-label="Добави продукта в любими" data-favorite-product="<?= $view->e($favoriteJson?:'{}') ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
   </div>
   <div class="product-card-body">

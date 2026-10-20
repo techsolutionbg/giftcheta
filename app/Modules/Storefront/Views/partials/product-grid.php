@@ -2,7 +2,7 @@
 .product-card-media{position:relative;overflow:hidden;background:#f7efec}
 .product-card-media>a{display:block}
 .product-card-media>a>img,.product-card-media>a>.image-placeholder{display:block;width:100%;aspect-ratio:1/1;object-fit:cover}
-.product-card-promo{position:absolute;top:12px;left:12px;padding:5px 10px;border-radius:999px;background:#ef3b68;color:#fff;font-size:.78rem;line-height:1.2;font-weight:400;box-shadow:0 3px 10px #8e304a30}
+.product-card-promo[hidden]{display:none!important}.product-card-promo{position:absolute;top:12px;left:12px;max-width:calc(100% - 72px);padding:7px 10px;border:1px solid #a91f43;border-radius:10px;background:linear-gradient(120deg,#d92753,#a91f43);color:#fff;font-size:.76rem;line-height:1.2;font-weight:400;box-shadow:0 5px 15px #8e304a45;text-wrap:balance}
 .product-card-favorite{position:absolute;top:12px;right:12px;display:flex;align-items:center;justify-content:center;line-height:0;width:44px;height:44px;padding:0;border:1px solid #f0cbd4;border-radius:50%;background:#fff;color:#d83c62;box-shadow:0 3px 12px #48202b25;cursor:pointer;transition:transform .18s ease,background .18s ease}
 .product-card-favorite:hover{transform:scale(1.06);background:#fff5f7}
 .product-card-favorite svg{display:block;flex:none;margin:0;width:23px;height:23px;fill:#f9e1e7;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;transition:fill .18s ease,transform .18s ease}
@@ -66,7 +66,7 @@
     const variantId=form.querySelector('[data-card-variant-id]'),button=form.querySelector('button[type="submit"]'),feedback=form.querySelector('.product-card-add-feedback');
     if(variantId)variantId.value=match?String(match.id):'';if(button)button.disabled=!match;
     if(feedback&&!match){feedback.textContent='Тази комбинация не е налична.';feedback.hidden=false}else if(feedback){feedback.hidden=true;feedback.textContent=''}
-    if(match){const current=form.closest('.product-card')?.querySelector('[data-card-price-current]'),was=form.closest('.product-card')?.querySelector('[data-card-price-was]');if(current)current.textContent=money.format(Number(match.price));if(was){const discounted=Number(match.regular_price)>Number(match.price);was.hidden=!discounted;if(discounted)was.textContent=money.format(Number(match.regular_price))}}
+    if(match){const current=form.closest('.product-card')?.querySelector('[data-card-price-current]'),was=form.closest('.product-card')?.querySelector('[data-card-price-was]'),promo=form.closest('.product-card')?.querySelector('[data-card-promo]');const discounted=Number(match.regular_price)>Number(match.price);if(current)current.textContent=money.format(Number(match.price));if(was){was.hidden=!discounted;if(discounted)was.textContent=money.format(Number(match.regular_price))}if(promo){promo.hidden=!discounted;if(discounted){const saved=Number(match.regular_price)-Number(match.price),percent=Math.round(saved/Number(match.regular_price)*100);promo.textContent='Спестявате '+money.format(saved)+' · '+percent+'%'}}}
   }
   document.querySelectorAll('[data-card-variant-form]').forEach(update);
   document.addEventListener('change',event=>{const form=event.target.closest('[data-card-variant-form]');if(form&&event.target.matches('[data-card-variant-choice]'))update(form)});

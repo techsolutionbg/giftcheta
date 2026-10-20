@@ -25,6 +25,9 @@ type ProductImageUploaderProps = {
   primaryPendingIndex: number
   onPrimaryPendingIndexChange: (index: number) => void
   onError: (message: string) => void
+  ariaLabelledBy?: string
+  singleImageLabel?: string
+  singleImageDescription?: string
 }
 
 type UploadResponse = { data: ProductImage }
@@ -52,7 +55,7 @@ export async function uploadCategoryImage(categoryId: number, file: File): Promi
   return { id: categoryId, file_path: result.data.image_path, is_primary: true }
 }
 
-export function ProductImageUploader({ productId, categoryId, singleImage = false, images, onImagesChange, pendingFiles, onPendingFilesChange, primaryPendingIndex, onPrimaryPendingIndexChange, onError }: ProductImageUploaderProps) {
+export function ProductImageUploader({ productId, categoryId, singleImage = false, images, onImagesChange, pendingFiles, onPendingFilesChange, primaryPendingIndex, onPrimaryPendingIndexChange, onError, ariaLabelledBy, singleImageLabel, singleImageDescription }: ProductImageUploaderProps) {
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [primaryImageId, setPrimaryImageId] = useState<number | null>(null)
@@ -131,20 +134,20 @@ export function ProductImageUploader({ productId, categoryId, singleImage = fals
   const activeLightbox = lightbox
 
   return <>
-  <section className={`product-image-uploader${singleImage ? ' category-image-uploader' : ''}`} aria-label={singleImage ? 'Изображение на категорията' : 'Изображения на продукта'}>
-    <div className="product-image-uploader-heading"><div>{!singleImage&&<h3>Изображения</h3>}<p>{singleImage ? 'Добавете изображение, което представя категорията. JPEG, PNG или WebP до 10 MB.' : 'Добавете основно изображение и още снимки за галерията. JPEG, PNG или WebP до 10 MB.'}</p></div></div>
+  <section className={`product-image-uploader${singleImage ? ' category-image-uploader' : ''}`} aria-labelledby={ariaLabelledBy} aria-label={singleImageLabel || (singleImage ? 'Изображение на категорията' : 'Изображения на продукта')}>
+    <div className="product-image-uploader-heading"><div>{!singleImage&&<h3>Изображения</h3>}<p>{singleImage ? 'Добавете едно изображение. JPEG, PNG или WebP до 10 MB.' : 'Добавете основно изображение и още снимки за галерията. JPEG, PNG или WebP до 10 MB.'}</p></div></div>
     <label className={`product-image-dropzone${uploading ? ' is-busy' : ''}`}>
       <input type="file" accept="image/jpeg,image/png,image/webp" multiple={!singleImage} disabled={busy} onChange={event => { void selectFiles(event.currentTarget.files); event.currentTarget.value = ''}}/>
       <span className="product-image-dropzone-icon">{uploading ? <LoaderCircle className="product-image-spinner" size={22}/> : <ImagePlus size={22}/>}</span>
       <strong>{uploading ? 'Обработваме изображенията…' : 'Изберете изображения'}</strong>
-      <span>{singleImage ? 'Изберете едно изображение за категорията' : 'Можете да добавите няколко файла наведнъж'}</span>
+      <span>{singleImage ? singleImageDescription || 'Изберете едно изображение за категорията' : 'Можете да добавите няколко файла наведнъж'}</span>
       <span className="outline-button product-image-select-button"><Upload size={15}/> Избери файлове</span>
     </label>
 
     {(images.length > 0 || pendingFiles.length > 0) ? <div className="product-image-grid">
       {images.map(image => <article className={`product-image-card${image.is_primary ? ' is-primary' : ''}`} key={`saved-${image.id}`}>
         <button type="button" className="product-image-preview" onClick={() => setLightbox({src:`/${image.file_path}`,alt:image.alt_text||(singleImage?'Изображение на категорията':'Изображение на продукта')})} aria-label="Покажи изображението в голям размер"><img src={`/${image.thumbnail_path || image.file_path}`} alt={image.alt_text || ''}/></button>
-        <div className="product-image-card-actions">{!singleImage&&(image.is_primary ? <span className="product-image-primary-badge"><Star size={12} fill="currentColor"/> Предно изображение</span> : <button type="button" className="outline-button tiny" disabled={busy} onClick={() => void setPrimary(image)}>{primaryImageId===image.id?<LoaderCircle className="product-image-spinner" size={14}/>:<Star size={13}/>} Задай основно</button>)}<button type="button" className="icon-button compact danger-icon" title="Изтрий изображението" aria-label="Изтрий изображението" disabled={busy} onClick={() => void removeImage(image)}><Trash2 size={15}/></button></div>
+        <div className="product-image-card-actions">{!singleImage&&(image.is_primary ? <span className="product-image-primary-badge"><Star size={12} fill="currentColor"/> Предно изображение</span> : <button type="button" className="outline-button tiny" disabled={busy} onClick={() => void setPrimary(image)}>{primaryImageId===image.id?<LoaderCircle className="product-image-spinner" size={14}/>:<Star size={13}/>} Задай основно</button>)}{(productId||categoryId)&&<button type="button" className="icon-button compact danger-icon" title="Изтрий изображението" aria-label="Изтрий изображението" disabled={busy} onClick={() => void removeImage(image)}><Trash2 size={15}/></button>}</div>
       </article>)}
       {pendingFiles.map((file, index) => <article className={`product-image-card${index === primaryPendingIndex ? ' is-primary' : ''}`} key={`pending-${file.name}-${file.size}-${index}`}>
         {previews[index] && <button type="button" className="product-image-preview" onClick={() => setLightbox({src:previews[index],alt:file.name})} aria-label="Покажи изображението в голям размер"><img src={previews[index]} alt={file.name}/></button>}

@@ -90,12 +90,14 @@ final class BannersApi
     {
         $title = trim((string)($input['title'] ?? '')); $description = trim((string)($input['description'] ?? ''));
         $label = trim((string)($input['button_label'] ?? '')); $url = trim((string)($input['button_url'] ?? ''));
-        $alt = trim((string)($input['image_alt'] ?? '')); $order = filter_var($input['sort_order'] ?? 0, FILTER_VALIDATE_INT);
-        $validUrl = $url !== '' && strlen($url) <= 2048 && !preg_match('/[\x00-\x20]/', $url) && !str_contains($url, '\\')
-            && ((str_starts_with($url, '/') && !str_starts_with($url, '//')) || (str_starts_with($url, 'https://') && filter_var($url, FILTER_VALIDATE_URL) !== false));
+        $alt = trim((string)($input['image_alt'] ?? ''));
+        $orderInput = trim((string)($input['sort_order'] ?? ''));
+        $order = $orderInput === '' ? 0 : filter_var($orderInput, FILTER_VALIDATE_INT);
+        $validUrl = $url === '' || (strlen($url) <= 2048 && !preg_match('/[\x00-\x20]/', $url) && !str_contains($url, '\\')
+            && ((str_starts_with($url, '/') && !str_starts_with($url, '//')) || (str_starts_with($url, 'https://') && filter_var($url, FILTER_VALIDATE_URL) !== false)));
         $active = filter_var($input['is_active'] ?? '1', FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-        if ($title === '' || mb_strlen($title) > 180 || $description === '' || mb_strlen($description) > 500 || $label === '' || mb_strlen($label) > 80 || !$validUrl || mb_strlen($alt) > 255 || $order === false || $order < 0 || $order > 1000000 || $active === null) {
-            return $this->error('validation_error', 'Попълнете заглавие, текст на бутона и валиден вътрешен или HTTPS адрес. Проверете ограниченията за дължина и подредба.', 422);
+        if (mb_strlen($title) > 180 || mb_strlen($description) > 500 || mb_strlen($label) > 80 || !$validUrl || mb_strlen($alt) > 255 || $order === false || $order < 0 || $order > 1000000 || $active === null) {
+            return $this->error('validation_error', 'Проверете ограниченията за дължина, адрес и подредба на банера.', 422);
         }
         return [$title, $description, $label, $url, $alt === '' ? null : $alt, $order, $active ? 1 : 0];
     }

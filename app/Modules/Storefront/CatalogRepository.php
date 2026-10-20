@@ -10,7 +10,18 @@ final class CatalogRepository
 
     public function homeCategories(): array
     {
-        return $this->db->query("SELECT c.id,c.name,c.slug,c.image_path,COUNT(DISTINCT p.id) product_count FROM categories c LEFT JOIN product_categories pc ON pc.category_id=c.id LEFT JOIN products p ON p.id=pc.product_id AND p.status='active' AND p.deleted_at IS NULL WHERE c.is_active=1 AND c.deleted_at IS NULL GROUP BY c.id ORDER BY c.sort_order,c.name LIMIT 12")->fetchAll();
+        return $this->db->query("WITH RECURSIVE category_tree AS (
+            SELECT c.id root_id,c.id category_id FROM categories c WHERE c.parent_id IS NULL AND c.is_active=1 AND c.deleted_at IS NULL
+            UNION ALL
+            SELECT tree.root_id,child.id FROM category_tree tree JOIN categories child ON child.parent_id=tree.category_id AND child.is_active=1 AND child.deleted_at IS NULL
+        )
+        SELECT c.id,c.name,c.slug,c.image_path,COUNT(DISTINCT p.id) product_count
+        FROM categories c
+        JOIN category_tree tree ON tree.root_id=c.id
+        LEFT JOIN product_categories pc ON pc.category_id=tree.category_id
+        LEFT JOIN products p ON p.id=pc.product_id AND p.status='active' AND p.deleted_at IS NULL
+        WHERE c.parent_id IS NULL AND c.is_active=1 AND c.deleted_at IS NULL
+        GROUP BY c.id ORDER BY c.sort_order,c.name LIMIT 12")->fetchAll();
     }
 
     public function categories(): array
@@ -99,6 +110,9 @@ final class CatalogRepository
 
     public function latestProducts(int $limit=8): array
     { $limit=max(1,min(100,$limit));$price=$this->publicPriceExpression();$regularPrice=$this->regularPublicPriceExpression();$cardFlags=$this->productCardFlags();$items=$this->db->query("SELECT p.id,p.name,p.slug,p.short_description,p.price,p.sale_price,p.is_available,p.inventory_mode,p.stock_quantity,p.default_variant_id,{$price} public_price,{$regularPrice} regular_public_price,(SELECT i.file_path FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) image_path,(SELECT i.alt_text FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) image_alt{$cardFlags} FROM products p WHERE p.status='active' AND p.deleted_at IS NULL ORDER BY p.created_at DESC,p.id DESC LIMIT {$limit}")->fetchAll();return $this->attachVariantOptions($items); }
+
+    public function bestSellingProducts(int $limit=8): array
+    { $limit=max(1,min(100,$limit));$price=$this->publicPriceExpression();$regularPrice=$this->regularPublicPriceExpression();$cardFlags=$this->productCardFlags();$items=$this->db->query("SELECT p.id,p.name,p.slug,p.short_description,p.price,p.sale_price,p.is_available,p.inventory_mode,p.stock_quantity,p.default_variant_id,{$price} public_price,{$regularPrice} regular_public_price,(SELECT i.file_path FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) image_path,(SELECT i.alt_text FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) image_alt{$cardFlags},SUM(oi.quantity) sold_quantity FROM products p JOIN order_items oi ON oi.product_id=p.id JOIN orders o ON o.id=oi.order_id AND o.status<>'cancelled' AND o.payment_status<>'refunded' WHERE p.status='active' AND p.deleted_at IS NULL GROUP BY p.id ORDER BY sold_quantity DESC,p.created_at DESC,p.id DESC LIMIT {$limit}")->fetchAll();return $this->attachVariantOptions($items); }
 
     public function homeBanners(): array
     { return $this->db->query('SELECT title,description,button_label,button_url,image_path,image_alt FROM banners WHERE is_active=1 ORDER BY sort_order,id')->fetchAll(PDO::FETCH_ASSOC); }
