@@ -685,6 +685,16 @@ html:not(.dark) .topbar-actions>.icon-button:hover{background:#d1d5db;border-col
 .check-setting-row>.selection-control{align-self:center}
 .category-select-list .selection-control{width:100%}
 .category-select-list .selection-control-label{font-size:15px}
+.category-select-list .category-select-group{display:grid;gap:7px}
+.category-select-parent{display:flex;align-items:center;gap:8px;min-width:0}
+.category-select-parent>.selection-control{flex:1;width:auto;min-height:42px;margin:0;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+.category-select-expand{display:grid;width:38px;height:42px;flex:none;place-items:center;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--muted);cursor:pointer;transition:background .16s,color .16s,transform .16s}
+.category-select-expand:hover{background:var(--paper);color:var(--ink)}
+.category-select-expand svg{transition:transform .16s}
+.category-select-expand.is-expanded svg{transform:rotate(90deg)}
+.category-select-children{display:grid;gap:7px;padding-left:24px}
+.category-select-list .selection-control.category-select-child{width:auto;min-height:40px;margin:0;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+.dark .category-select-expand{color:var(--ink)}
 .dark .selection-control-checkbox .selection-control-visual{border-color:#8b929b;background:#1d1d1d}
 .dark .selection-control-switch .selection-control-visual{border-color:#73777e;background:#303238}
 .dark .selection-control-switch .selection-control-visual:after{background:#c4c7ce}

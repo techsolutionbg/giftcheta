@@ -58,5 +58,26 @@ $money=static fn(int $cents):string=>$view->money(\Giftcheta\Modules\Commerce\Pr
 @media(max-width:380px){.checkout-success-hero h1{font-size:1.38rem}.checkout-success-facts{grid-template-columns:1fr}.checkout-success-fact:nth-child(odd),.checkout-success-fact:nth-child(even){padding:8px 0;border-right:0}.checkout-success-total{grid-column:auto}.checkout-success-products li{gap:7px;padding:6px}.checkout-product-symbol{width:40px;height:40px}.checkout-product-copy strong{font-size:.8rem}.checkout-product-price{font-size:.78rem}}
 .checkout-product-image{display:block;width:54px;height:54px;flex:none;border-radius:8px;object-fit:cover;background:#fff0f2}@media(max-width:600px){.checkout-product-image{width:46px;height:46px}}
 @media(prefers-reduced-motion:reduce){.checkout-confetti i{display:none}.checkout-success-dialog{animation:none}.checkout-success-close{transition:none}}
+.checkout-success-dialog,.checkout-success-dialog *{font-weight:400!important}
+.checkout-success-body{display:grid;gap:14px}
+.checkout-success-facts{gap:8px 20px}
+.checkout-success-fact{padding-block:8px}
+.checkout-success-total{margin-top:0;padding-top:12px}
+.checkout-success-products{margin-top:0;padding:16px}
+.checkout-success-products h2{margin-bottom:12px;font-size:1.12rem}
+.checkout-success-products ul{gap:9px}
+.checkout-success-products li{gap:12px;padding:10px}
+.checkout-success-hero h1{font-size:clamp(1.65rem,3.5vw,2.08rem)}
+.checkout-success-hero p{font-size:1rem}
+.checkout-success-fact small{font-size:.82rem}
+.checkout-success-fact strong{font-size:.94rem}
+.checkout-success-total strong{font-size:1.12rem!important}
+.checkout-status-pill{font-size:.82rem!important}
+.checkout-product-copy{gap:4px}
+.checkout-product-copy strong,.checkout-product-price{font-size:.96rem}
+.checkout-product-copy small{font-size:.82rem}
+.checkout-success-delivery{margin:0 2px;font-size:.88rem}
+.checkout-success-actions{margin-top:0}
+@media(max-width:600px){.checkout-success-body{gap:12px}.checkout-success-products{padding:12px}.checkout-success-products h2{font-size:1.08rem}}
 </style>
 <?php $content=ob_get_clean();require __DIR__.'/layout.php'; ?>
