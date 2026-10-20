@@ -89,6 +89,14 @@ final class CatalogRepository
         $sql="SELECT p.id,p.name,p.slug,p.short_description,p.price,p.sale_price,p.is_available,p.inventory_mode,p.stock_quantity,p.default_variant_id,p.created_at,{$price} public_price,{$regularPrice} regular_public_price,(SELECT i.file_path FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) image_path,(SELECT i.alt_text FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) image_alt{$cardFlags} FROM products p{$clause} ORDER BY {$sort} LIMIT {$filters['per_page']} OFFSET ".(($filters['page']-1)*$filters['per_page']);$q=$this->db->prepare($sql);$q->execute($args);return ['items'=>$this->attachVariantOptions($q->fetchAll()),'total'=>$total];
     }
 
+    public function searchSuggestions(string $term,int $limit=6): array
+    {
+        $limit=max(1,min(10,$limit));
+        if(mb_strlen($term)<2)return $this->latestProducts($limit);
+        $result=$this->search($term,['min_price'=>null,'max_price'=>null,'in_stock'=>false,'sort'=>'latest','page'=>1,'per_page'=>$limit]);
+        return $result['items'];
+    }
+
     public function latestProducts(int $limit=8): array
     { $limit=max(1,min(100,$limit));$price=$this->publicPriceExpression();$regularPrice=$this->regularPublicPriceExpression();$cardFlags=$this->productCardFlags();$items=$this->db->query("SELECT p.id,p.name,p.slug,p.short_description,p.price,p.sale_price,p.is_available,p.inventory_mode,p.stock_quantity,p.default_variant_id,{$price} public_price,{$regularPrice} regular_public_price,(SELECT i.file_path FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) image_path,(SELECT i.alt_text FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC,i.position,i.id LIMIT 1) image_alt{$cardFlags} FROM products p WHERE p.status='active' AND p.deleted_at IS NULL ORDER BY p.created_at DESC,p.id DESC LIMIT {$limit}")->fetchAll();return $this->attachVariantOptions($items); }
 

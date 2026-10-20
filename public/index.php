@@ -36,6 +36,7 @@ $router->get('/category/{slug}', function (Request $request, $config, array $par
 $router->get('/product/{slug}', function (Request $request, $config, array $params) use ($storefront) { return $storefront->redirect($request) ?? $storefront->product($request,$params); });
 $router->get('/product/{slug}/reviews', fn (Request $request, $config, array $params) => $storefront->reviewsPage($request,$params));
 $router->post('/product/{slug}/reviews', fn (Request $request, $config, array $params) => $storefront->submitReview($request,$params));
+$router->get('/api/v1/search/suggestions', fn (Request $request) => $storefront->searchSuggestions($request));
 $router->get('/search', fn (Request $request) => $storefront->search($request));
 $router->get('/sitemap.xml', fn (Request $request) => $storefront->sitemap($request));
 $router->get('/robots.txt', fn (Request $request) => $storefront->robots($request));
