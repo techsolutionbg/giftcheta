@@ -16,7 +16,7 @@ final class CartService
 
     public function summary(string $keyHash): array
     {
-        $cartId=$this->repository->cartId($keyHash);if($cartId===null)return ['items'=>[],'count'=>0,'subtotal_cents'=>0];$this->repository->touch($cartId);$items=$this->repository->itemRows($cartId);$subtotal=0;
+        $cartId=$this->repository->cartId($keyHash);if($cartId===null)return ['items'=>[],'count'=>0,'subtotal_cents'=>0,'discount_code'=>null,'discount_cents'=>0,'discount_error'=>null];$this->repository->touch($cartId);$items=$this->repository->itemRows($cartId);$subtotal=0;
         foreach($items as &$item){$issue=null;$productAvailable=$item['product_status']==='active'&&$item['product_deleted_at']===null;$variantId=$item['product_variant_id']===null?null:(int)$item['product_variant_id'];$variant=null;
             if(!$productAvailable)$issue='Продуктът вече не е активен.';
             elseif((bool)$item['has_active_variants']&&$variantId===null)$issue='Изберете отново продуктов вариант.';
@@ -34,7 +34,35 @@ final class CartService
             if($unitCents===null){$saved=ProductPricingService::moneyCents((string)$item['unit_price'])??0;$item['unit_price_current_cents']=$saved;$subtotal+=$saved*(int)$item['quantity'];$item['price_changed']=false;}
             $item['issue']=$issue;$item['available']=$issue===null;$item['line_total_cents']=$item['unit_price_current_cents']*(int)$item['quantity'];$item['variant_options']=json_decode((string)$item['variant_options'],true)?:[];$item['customization_map']=[];
             foreach($item['customizations'] as $custom){$fieldId=$custom['customization_field_id'];if($fieldId!==null)$item['customization_map'][(int)$fieldId]=$custom;$custom['preview_url']=$custom['file_reference']?'/cart/files/'.$custom['file_reference']:null;$item['custom_display'][]=$custom;}
-        }unset($item);return ['items'=>$items,'count'=>array_sum(array_map(static fn(array $i):int=>(int)$i['quantity'],$items)),'subtotal_cents'=>$subtotal];
+        }unset($item);$discount=$this->discountForCart($cartId,$subtotal);return ['items'=>$items,'count'=>array_sum(array_map(static fn(array $i):int=>(int)$i['quantity'],$items)),'subtotal_cents'=>$subtotal,'discount_code'=>$discount['code'],'discount_cents'=>$discount['discount_cents'],'discount_error'=>$discount['error']];
+    }
+
+    public function applyDiscountCode(string $keyHash,string $code): array
+    {
+        $cartId=$this->repository->cartId($keyHash);if($cartId===null||$this->repository->count($cartId)<1)return $this->error('Добавете продукт в количката, преди да приложите код.',409);
+        $normalized=strtoupper(trim($code));if(!preg_match('/^[A-Z0-9][A-Z0-9_-]{2,63}$/D',$normalized))return $this->error('Въведете валиден код за отстъпка.',422);
+        $currentQuery=$this->db->prepare("SELECT discount_code_id FROM carts WHERE id=? AND status='active'");$currentQuery->execute([$cartId]);$cart=$currentQuery->fetch(PDO::FETCH_ASSOC);
+        if(!$cart)return $this->error('Количката вече не е активна. Обновете страницата.',409);
+        if($cart['discount_code_id']!==null)return $this->error('Вече има приложен код за отстъпка. Премахнете го, преди да приложите друг.',409);
+        $summary=$this->summary($keyHash);$query=$this->db->prepare('SELECT * FROM discount_codes WHERE code=? AND is_active=1 AND (starts_at IS NULL OR starts_at<=NOW()) AND (ends_at IS NULL OR ends_at>NOW()) LIMIT 1');$query->execute([$normalized]);$coupon=$query->fetch(PDO::FETCH_ASSOC);
+        if(!$coupon)return $this->error('Кодът е невалиден, изтекъл или вече не е активен.',422);
+        if($coupon['maximum_uses']!==null&&(int)$coupon['uses_count']>=(int)$coupon['maximum_uses'])return $this->error('Кодът е достигнал максималния брой използвания.',422);
+        if((ProductPricingService::moneyCents((string)$coupon['minimum_subtotal'])??0)>(int)$summary['subtotal_cents'])return $this->error('Сумата на продуктите не достига минималната сума за този код.',422);
+        $apply=$this->db->prepare("UPDATE carts SET discount_code_id=? WHERE id=? AND status='active' AND discount_code_id IS NULL");$apply->execute([(int)$coupon['id'],$cartId]);
+        if($apply->rowCount()!==1)return $this->error('Вече има приложен код за отстъпка. Премахнете го, преди да приложите друг.',409);
+        $this->repository->touch($cartId);return ['ok'=>true,'message'=>'Кодът за отстъпка е приложен.'];
+    }
+
+    public function removeDiscountCode(string $keyHash): array
+    { $cartId=$this->repository->cartId($keyHash);if($cartId===null)return ['ok'=>true,'message'=>'Кодът е премахнат.'];$this->db->prepare('UPDATE carts SET discount_code_id=NULL WHERE id=?')->execute([$cartId]);return ['ok'=>true,'message'=>'Кодът е премахнат.']; }
+
+    private function discountForCart(int $cartId,int $subtotal): array
+    {
+        $query=$this->db->prepare('SELECT d.* FROM carts c LEFT JOIN discount_codes d ON d.id=c.discount_code_id WHERE c.id=?');$query->execute([$cartId]);$coupon=$query->fetch(PDO::FETCH_ASSOC);
+        if(!$coupon||$coupon['id']===null)return ['code'=>null,'discount_cents'=>0,'error'=>null];
+        if(!(int)$coupon['is_active']||($coupon['starts_at']!==null&&strtotime((string)$coupon['starts_at'])>time())||($coupon['ends_at']!==null&&strtotime((string)$coupon['ends_at'])<=time())||($coupon['maximum_uses']!==null&&(int)$coupon['uses_count']>=(int)$coupon['maximum_uses']))return ['code'=>(string)$coupon['code'],'discount_cents'=>0,'error'=>'Този код вече не може да бъде използван.'];
+        if($subtotal<(ProductPricingService::moneyCents((string)$coupon['minimum_subtotal'])??0))return ['code'=>(string)$coupon['code'],'discount_cents'=>0,'error'=>'Минималната сума за този код вече не е достигната.'];
+        $value=(float)$coupon['discount_value'];$discount=$coupon['discount_type']==='percentage'?(int)round($subtotal*$value/100):(ProductPricingService::moneyCents((string)$coupon['discount_value'])??0);return ['code'=>(string)$coupon['code'],'discount_cents'=>min($subtotal,max(0,$discount)),'error'=>null];
     }
 
     public function add(string $keyHash,int $productId,?int $variantId,int $quantity,array $input): array

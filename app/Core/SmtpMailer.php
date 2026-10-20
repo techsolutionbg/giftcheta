@@ -18,9 +18,11 @@ final class SmtpMailer
         $this->deliver((new Email())->to($recipient)->subject($subject)->text($body), $recipient);
     }
 
-    public function sendHtml(string $recipient, string $subject, string $text, string $html): void
+    public function sendHtml(string $recipient, string $subject, string $text, string $html, ?string $attachmentPath = null, ?string $attachmentName = null): void
     {
-        $this->deliver((new Email())->to($recipient)->subject($subject)->text($text)->html($html), $recipient);
+        $email=(new Email())->to($recipient)->subject($subject)->text($text)->html($html);
+        if($attachmentPath!==null){if(!is_file($attachmentPath)||!str_contains($attachmentPath,DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'private'.DIRECTORY_SEPARATOR.'invoices'.DIRECTORY_SEPARATOR))throw new RuntimeException('Invoice attachment is unavailable.');$email->attachFromPath($attachmentPath,$attachmentName??'invoice.pdf','application/pdf');}
+        $this->deliver($email, $recipient);
     }
 
     private function deliver(Email $email, string $recipient): void

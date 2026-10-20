@@ -5,6 +5,7 @@ namespace Giftcheta\Modules\Admin;
 use Giftcheta\Core\Config;
 use Giftcheta\Core\Logger;
 use Giftcheta\Core\SmtpMailer;
+use Giftcheta\Modules\Commerce\InvoiceService;
 use Giftcheta\Http\Request;
 use Giftcheta\Http\Response;
 use PDO;
@@ -67,12 +68,14 @@ final class OrdersApi
         $this->dispatchOutbox(3);
         $order = $this->findOrder((int) ($params['id'] ?? 0));
         if (!$order) return $this->notFound();
+        try{(new InvoiceService($this->db,dirname(__DIR__,3)))->ensure((int)$order['id']);}catch(Throwable $error){$this->logger->log('error','Order invoice preparation failed',['order_id'=>(int)$order['id'],'exception'=>$error::class]);}
         $addresses = $this->db->prepare('SELECT id,address_type,recipient_name,phone,country_code,city,postal_code,address_line1,address_line2 FROM order_addresses WHERE order_id=? ORDER BY address_type,id');
         $addresses->execute([$order['id']]);
         $order['addresses'] = $addresses->fetchAll(PDO::FETCH_ASSOC);
         $items = $this->db->prepare('SELECT id,product_id,product_variant_id,product_name,sku,variant_name,quantity,unit_price,customization_total,discount_total,line_total FROM order_items WHERE order_id=? ORDER BY id');
         $items->execute([$order['id']]);
         $order['items'] = $items->fetchAll(PDO::FETCH_ASSOC);
+        $invoice=$this->db->prepare('SELECT invoice_number,status,customer_requested,recipient_email,issued_at FROM order_invoices WHERE order_id=?');$invoice->execute([$order['id']]);$order['invoice']=$invoice->fetch(PDO::FETCH_ASSOC)?:null;
         $customizations = $this->db->prepare('SELECT c.id,c.order_item_id,c.field_identifier,c.field_label,c.field_type,c.value_text,c.file_reference,c.price_adjustment FROM order_item_customizations c JOIN order_items i ON i.id=c.order_item_id WHERE i.order_id=? ORDER BY c.order_item_id,c.id');
         $customizations->execute([$order['id']]);
         $byItem = [];
@@ -93,6 +96,12 @@ final class OrdersApi
             $order['payment_history']=$paymentHistory->fetchAll(PDO::FETCH_ASSOC);
         }
         return Response::json(['data' => $order]);
+    }
+
+    public function invoice(Request $request,array $params): Response
+    {
+        if($error=$this->auth->guard($request,'orders.view',false))return $error;$id=$this->positiveId($params['id']??null);if($id===null||!$this->findOrder($id))return $this->notFound();
+        try{$invoice=(new InvoiceService($this->db,dirname(__DIR__,3)))->ensure($id);$path=dirname(__DIR__,3).DIRECTORY_SEPARATOR.str_replace('/',DIRECTORY_SEPARATOR,$invoice['path']);$bytes=file_get_contents($path);if($bytes===false)throw new \RuntimeException('PDF is unavailable.');$name=preg_replace('/[^A-Za-z0-9_.-]/','_',basename($invoice['file_name']));$disposition=($request->query['download']??'')==='1'?'attachment':'inline';return new Response($bytes,200,['Content-Type'=>'application/pdf','Content-Disposition'=>$disposition.'; filename="'.$name.'"','Content-Length'=>(string)strlen($bytes),'X-Content-Type-Options'=>'nosniff','Cache-Control'=>'private, no-store']);}catch(Throwable $e){$this->logger->log('error','Invoice PDF could not be prepared',['order_id'=>$id,'exception'=>$e::class]);return $this->error('invoice_unavailable','Фактурата временно не може да бъде генерирана.',503);}
     }
 
     public function history(Request $request, array $params): Response
@@ -507,7 +516,8 @@ final class OrdersApi
                 $claim=$this->db->prepare("UPDATE order_email_outbox SET status='sending',locked_at=UTC_TIMESTAMP(),attempt_count=attempt_count+1 WHERE id=? AND status IN ('pending','failed')");$claim->execute([$message['id']]);if($claim->rowCount()!==1){$this->db->commit();continue;}$message['attempt_count']=(int)$message['attempt_count']+1;$this->db->commit();
             }catch(Throwable $error){if($this->db->inTransaction())$this->db->rollBack();$this->logger->log('error','Order email queue claim failed',['exception'=>$error::class]);return;}
             try {
-                (new SmtpMailer($this->config))->sendHtml((string)$message['recipient_email'],(string)$message['subject'],(string)$message['body_text'],(string)$message['body_html']);
+                $attachment=null;if(!empty($message['attachment_path']))$attachment=dirname(__DIR__,3).DIRECTORY_SEPARATOR.str_replace('/',DIRECTORY_SEPARATOR,(string)$message['attachment_path']);
+                (new SmtpMailer($this->config))->sendHtml((string)$message['recipient_email'],(string)$message['subject'],(string)$message['body_text'],(string)$message['body_html'],$attachment,(string)($message['attachment_name']??'invoice.pdf'));
                 $this->db->prepare("UPDATE order_email_outbox SET status='sent',sent_at=UTC_TIMESTAMP(),locked_at=NULL,last_error=NULL WHERE id=? AND status='sending'")->execute([$message['id']]);
             }catch(Throwable $error){$attempt=(int)$message['attempt_count'];$delay=[1=>1,2=>5,3=>15,4=>60,5=>360][$attempt]??1440;$status=$attempt>=5?'failed':'pending';$this->db->prepare('UPDATE order_email_outbox SET status=?,next_attempt_at=UTC_TIMESTAMP() + INTERVAL '.$delay.' MINUTE,locked_at=NULL,last_error=? WHERE id=? AND status=\'sending\'')->execute([$status,mb_substr($error::class.': '.$error->getMessage(),0,500),(int)$message['id']]);$this->logger->log('error','Order email delivery failed',['order_id'=>(int)$message['order_id'],'event_key'=>$message['event_key'],'attempt'=>$attempt,'exception'=>$error::class]);}
         }
