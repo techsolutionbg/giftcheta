@@ -14,7 +14,7 @@ $money=static fn(int $cents):string=>$view->money(\Giftcheta\Modules\Commerce\Pr
   </div>
   <div class="checkout-success-backdrop"></div>
   <article class="checkout-success-dialog" role="dialog" aria-modal="true" aria-labelledby="checkout-success-title">
-    <a class="checkout-success-close" href="/products" aria-label="Затвори и продължи към продуктите"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></a>
+    <?php $closeButtonLabel="Затвори и продължи към продуктите"; $closeButtonClass="checkout-success-close"; $closeButtonHref="/products"; include __DIR__."/partials/close-button.php"; ?>
     <header class="checkout-success-hero">
       <span class="checkout-success-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="m12 25 8 8 17-18"/></svg></span>
       <span class="checkout-success-gift" aria-hidden="true"><svg viewBox="0 0 56 48"><path d="M7 21h42v23H7zM4 14h48v9H4zM28 14v30M28 14H17c-8 0-8-10-2-10 8 0 13 10 13 10Zm0 0h11c8 0 8-10 2-10-8 0-13 10-13 10Z"/></svg></span>

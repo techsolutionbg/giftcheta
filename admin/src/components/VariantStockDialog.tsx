@@ -1,7 +1,7 @@
+import { CloseButton } from './CloseButton'
 import { useState } from 'react'
 import type * as React from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
 import { api, json } from '../lib/api'
 import { FormField } from './CatalogComponents'
 import { DialogFooter } from './DialogFooter'
@@ -41,7 +41,7 @@ export function VariantStockDialog({ productId, variants, onClose, onSaved }: {
   }
   return createPortal(<div className="modal-backdrop variant-dialog-backdrop" data-state={closing ? 'closed' : 'open'} onMouseDown={event => { if (event.target === event.currentTarget) close() }}>
     <section className="small-modal variant-editor-dialog variant-stock-dialog" data-state={closing ? 'closed' : 'open'} role="dialog" aria-modal="true" aria-labelledby="variant-stock-title">
-      <header className="editor-header"><div><h2 id="variant-stock-title">{variants.length > 1 ? 'Наличност на варианти' : 'Наличност на вариант'}</h2><p>{variants.length > 1 ? `Избрани варианти: ${variants.length}` : variants[0]?.name}</p></div><button type="button" className="icon-button editor-close-button" aria-label="Затвори" onClick={close}><X size={19}/></button></header>
+      <header className="editor-header"><div><h2 id="variant-stock-title">{variants.length > 1 ? 'Наличност на варианти' : 'Наличност на вариант'}</h2><p>{variants.length > 1 ? `Избрани варианти: ${variants.length}` : variants[0]?.name}</p></div><CloseButton className="editor-close-button" aria-label="Затвори" onClick={close}/></header>
       <form className="variant-editor-form" onSubmit={submit}>
         <main className="variant-editor-content"><FormField label="Количество в момента" helpText="Задайте текущия брой налични бройки за този вариант."><input type="number" min="0" step="1" autoFocus value={quantity} onChange={event => setQuantity(event.target.value)}/></FormField>{error && <div className="form-error" role="alert">{error}</div>}</main>
         <DialogFooter className="variant-editor-footer"><button type="button" className="outline-button" onClick={close}>Отказ</button><SaveButton disabled={saving} loading={saving} loadingLabel="Запис…">Запази наличността</SaveButton></DialogFooter>

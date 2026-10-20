@@ -1,3 +1,4 @@
+import { CloseButton } from './components/CloseButton'
 import { api, json, setCsrfToken } from './lib/api'
 import type { Admin, ToastState } from './types/admin'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -171,6 +172,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/admin" replace/>}/>
       </Routes>
     </main>
-    {toast && <div className={`toast ${toast.kind}`}><span>{toast.kind === 'success' ? <Check size={16}/> : <X size={16}/>}</span>{toast.message}<button onClick={() => setToast(null)} title="Затвори известието" aria-label="Затвори известието"><X size={14}/></button></div>}
+    {toast && <div className={`toast ${toast.kind}`}><span>{toast.kind === 'success' ? <Check size={16}/> : <X size={16}/>}</span>{toast.message}<CloseButton className="toast-close-button" onClick={() => setToast(null)} title="Затвори известието" aria-label="Затвори известието"/></div>}
   </div></>
 }

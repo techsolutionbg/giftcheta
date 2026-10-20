@@ -1,5 +1,6 @@
+import { CloseButton } from '../components/CloseButton'
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowDown, ArrowUp, ImagePlus, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ImagePlus, Pencil, Plus, Trash2 } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ToastState } from '../types/admin'
 import { Breadcrumbs } from '../components/Navigation'
@@ -54,7 +55,7 @@ function BannerEditor({banner,saving,onClose,onSave,onError}:{banner:Banner|null
   const existingImage:ProductImage[]=banner?.image_path&&!pendingImages.length?[{id:banner.id,file_path:banner.image_path,is_primary:true,alt_text:banner.image_alt}]:[]
   const update=(key:keyof BannerDraft,value:string|boolean|File|null)=>setDraft(current=>({...current,[key]:value}))
   return <div className="modal-backdrop" data-state="open" onMouseDown={event=>{if(event.target===event.currentTarget&&!saving)onClose()}}><section className="small-modal banner-editor-modal" role="dialog" aria-modal="true" aria-labelledby="banner-editor-title">
-    <header className="editor-header"><div><h2 id="banner-editor-title">{banner?'Редакция на банер':'Нов банер'}</h2><p>Съдържанието се показва в carousel-а на началната страница.</p></div><button type="button" className="icon-button editor-close-button" title="Затвори" aria-label="Затвори" disabled={saving} onClick={onClose}><X size={18}/></button></header>
+    <header className="editor-header"><div><h2 id="banner-editor-title">{banner?'Редакция на банер':'Нов банер'}</h2><p>Съдържанието се показва в carousel-а на началната страница.</p></div><CloseButton className="editor-close-button" title="Затвори" aria-label="Затвори" disabled={saving} onClick={onClose}/></header>
     <form className="banner-editor-form" onSubmit={event=>{event.preventDefault();void onSave(draft)}}>
       <FormField label="Заглавие" helpText="Незадължително. Показва се върху изображението."><input value={draft.title} maxLength={180} onChange={event=>update('title',event.target.value)}/></FormField>
       <FormField label="Описание" helpText="Незадължително. Кратък допълващ текст под заглавието."><textarea rows={3} value={draft.description} maxLength={500} onChange={event=>update('description',event.target.value)}/></FormField>

@@ -1,7 +1,8 @@
+import { CloseButton } from './CloseButton'
 import { useEffect, useRef, useState } from 'react'
 import type * as React from 'react'
 import { createPortal } from 'react-dom'
-import { FileText, X } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { api, json } from '../lib/api'
 import type { Product, ToastState } from '../types/admin'
 import { LazyRichTextEditor } from './LazyRichTextEditor'
@@ -70,7 +71,7 @@ export function ProductDescriptionDialog({ product, notify, onClose, onSaved }: 
     <section className="description-dialog" data-state={closing ? 'closed' : 'open'} role="dialog" aria-modal="true" aria-labelledby="product-description-dialog-title">
       <header className="description-dialog-header">
         <div className="description-dialog-heading"><span className="description-dialog-icon"><FileText size={20}/></span><div><h2 id="product-description-dialog-title">Описание на продукта</h2><p>{product.name}</p></div></div>
-        <button type="button" className="icon-button editor-close-button" title="Затвори редактора" aria-label="Затвори редактора" onClick={() => close()}><X size={19}/></button>
+        <CloseButton className="editor-close-button" title="Затвори редактора" aria-label="Затвори редактора" onClick={() => close()}/>
       </header>
       <form className="description-dialog-form" onSubmit={save}>
         <main className="description-dialog-content">

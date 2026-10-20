@@ -8,7 +8,7 @@ $renderCategoryTree=function(int $parentId,int $depth=0)use(&$renderCategoryTree
 ?>
 <aside class="catalog-sidebar" id="catalog-filters" aria-label="Филтри на продуктите">
   <form method="get" id="catalog-filter-form" class="catalog-filter-form" data-live-catalog-filters>
-    <div class="catalog-filter-drawer-header"><h2>Филтри</h2><button class="catalog-sidebar-close" type="button" data-catalog-filter-close aria-label="Затвори филтрите"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+    <div class="catalog-filter-drawer-header"><h2>Филтри</h2><?php $closeButtonLabel="Затвори филтрите"; $closeButtonClass="catalog-sidebar-close"; $closeButtonAttributes=["data-catalog-filter-close"=>true]; include __DIR__."/close-button.php"; ?></div>
     <input type="hidden" name="columns" value="<?= (int)($filters['columns']??4) ?>">
     <div class="catalog-filter-section">
       <h3>Цена (€)</h3>

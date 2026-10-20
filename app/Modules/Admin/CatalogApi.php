@@ -405,7 +405,7 @@ final class CatalogApi
         $primary=(int)$this->db->query('SELECT COUNT(*) FROM product_images WHERE product_id='.(int)$product.' AND is_primary=1')->fetchColumn()===0;
         $rel='uploads/products/'.$fileName;$thumbRel='uploads/products/thumbnails/'.$thumbName;
         $q=$this->db->prepare('INSERT INTO product_images (product_id,file_path,thumbnail_path,alt_text,position,is_primary,mime_type,file_size) VALUES (?,?,?,?,?,?,?,?)');$q->execute([$product,$rel,$thumbRel,$this->nullableText($_POST['alt_text']??null),$pos,(int)$primary,$mimeOut,(int)filesize($dir.'/'.$fileName)]);
-        return Response::json(['data'=>['id'=>(int)$this->db->lastInsertId(),'file_path'=>$rel,'thumbnail_path'=>$thumbRel,'is_primary'=>$primary]],201);
+        return Response::json(['data'=>['id'=>(int)$this->db->lastInsertId(),'file_path'=>$rel,'thumbnail_path'=>$thumbRel,'is_primary'=>$primary,'is_hover'=>false]],201);
     }
 
     public function uploadVariantImage(Request $r,array $p): Response
@@ -443,7 +443,24 @@ final class CatalogApi
     {
         if($e=$this->auth->guard($r,'products.write',true))return $e;
         $id=(int)($p['id']??0);$img=$this->find('product_images',$id);if(!$img)return $this->notFound();$d=$r->json();
-        if(isset($d['is_primary'])&&$this->bool($d['is_primary'])){$this->db->beginTransaction();$this->db->prepare('UPDATE product_images SET is_primary=0 WHERE product_id=?')->execute([$img['product_id']]);$this->db->prepare('UPDATE product_images SET is_primary=1 WHERE id=?')->execute([$id]);$this->db->commit();}
+        $makePrimary=isset($d['is_primary'])&&$this->bool($d['is_primary']);
+        $makeHover=array_key_exists('is_hover',$d)?$this->bool($d['is_hover']):null;
+        if($makePrimary&&$makeHover===1)return $this->error('validation_error','Едно изображение не може едновременно да бъде основно и снимка при посочване.',422);
+        if($makeHover===1&&(int)$img['is_primary']===1)return $this->error('validation_error','Основното изображение не може едновременно да бъде снимката при посочване.',422);
+        if($makePrimary||$makeHover!==null){
+            $this->db->beginTransaction();
+            try{
+                if($makePrimary){
+                    $this->db->prepare('UPDATE product_images SET is_primary=0 WHERE product_id=?')->execute([$img['product_id']]);
+                    $this->db->prepare('UPDATE product_images SET is_primary=1,is_hover=0 WHERE id=?')->execute([$id]);
+                }
+                if($makeHover!==null){
+                    if($makeHover===1)$this->db->prepare('UPDATE product_images SET is_hover=0 WHERE product_id=?')->execute([$img['product_id']]);
+                    $this->db->prepare('UPDATE product_images SET is_hover=? WHERE id=?')->execute([$makeHover,$id]);
+                }
+                $this->db->commit();
+            }catch(Throwable $error){if($this->db->inTransaction())$this->db->rollBack();throw $error;}
+        }
         $q=$this->db->prepare('UPDATE product_images SET alt_text=?,position=? WHERE id=?');$q->execute([$this->nullableText($d['alt_text']??$img['alt_text']),(int)($d['position']??$img['position']),$id]);
         return Response::json(['data'=>['updated'=>true]]);
     }
@@ -452,7 +469,7 @@ final class CatalogApi
     {
         if($e=$this->auth->guard($r,'products.write',true))return $e;$id=(int)($p['id']??0);$img=$this->find('product_images',$id);if(!$img)return $this->notFound();
         $this->db->prepare('DELETE FROM product_images WHERE id=?')->execute([$id]);$this->removePublicFile($img['file_path']);$this->removePublicFile($img['thumbnail_path']);
-        if((int)$img['is_primary']===1){$this->db->prepare('UPDATE product_images SET is_primary=1 WHERE product_id=? ORDER BY position,id LIMIT 1')->execute([$img['product_id']]);}
+        if((int)$img['is_primary']===1){$this->db->prepare('UPDATE product_images SET is_primary=1,is_hover=0 WHERE product_id=? ORDER BY position,id LIMIT 1')->execute([$img['product_id']]);}
         return Response::json(['data'=>['deleted'=>true]]);
     }
 

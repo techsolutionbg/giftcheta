@@ -57,6 +57,8 @@ final class StorefrontController
 
     public function product(Request $request,array $params): Response
     {
+        $this->cartSessions->start();
+        $reviewAuthorName=$this->signedInReviewAuthor();
         $product=$this->catalog->product((string)$params['slug']);if(!$product)return $this->notFound();$product['images']=$this->catalog->productImages((int)$product['id']);foreach($product['images'] as &$image){$relative=str_replace('\\','/',(string)$image['file_path']);if(preg_match('#\Auploads/products/[A-Za-z0-9._/-]+\z#D',$relative)&&!str_contains($relative,'..')){$metadata=@getimagesize($this->projectRoot.'/public/'.$relative);$image['width']=is_array($metadata)?(int)$metadata[0]:0;$image['height']=is_array($metadata)?(int)$metadata[1]:0;}else{$image['width']=0;$image['height']=0;}}unset($image);$product['variants']=$this->catalog->variants((int)$product['id']);$product['fields']=$this->catalog->customizationFields((int)$product['id']);$product['parameters']=$this->catalog->productParameters((int)$product['id']);$product['categories']=$this->catalog->productCategories((int)$product['id']);
         $requestedVariantId=filter_var($request->query['variant']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])?:null;$selectedId=$requestedVariantId;$selected=null;$product['base_price_cents']=ProductPricingService::moneyCents((string)($product['sale_price']??$product['price']))??0;
         foreach($product['variants'] as &$variant){$variant['option_values']=json_decode((string)$variant['option_values'],true)?:[];$variant['regular_effective_price']=$variant['price']!==null?(string)$variant['price']:(string)((float)$product['price']+(float)$variant['price_adjustment']);$variant['regular_effective_price_cents']=ProductPricingService::moneyCents($variant['regular_effective_price'])??0;$variant['effective_price']=$variant['price']!==null?(string)$variant['price']:(string)((float)($product['sale_price']??$product['price'])+(float)$variant['price_adjustment']);$variant['effective_price_cents']=ProductPricingService::moneyCents($variant['effective_price'])??0;$variant['available']=ProductPricingService::available($variant);}unset($variant);
@@ -64,7 +66,7 @@ final class StorefrontController
         $defaultVariantId=filter_var($product['default_variant_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]])?:null;$variantForSelection=static function(?int $id)use($product):?array{if(!$id)return null;foreach($product['variants'] as $variant)if((int)$variant['id']===$id)return $variant;return null;};
         if($selectedId!==null)$selected=$variantForSelection($selectedId);if(!$selected){$selectedId=$defaultVariantId;$selected=$variantForSelection($selectedId);}if(!$selected)$selectedId=null;
         $base=(string)($product['sale_price']??$product['price']);$effectivePrice=$selected['effective_price']??$base;$regularEffectivePrice=$selected['regular_effective_price']??(string)$product['price'];$regularPriceCents=ProductPricingService::moneyCents($regularEffectivePrice)??0;$baseAvailable=(bool)$product['is_available']&&($product['inventory_mode']!=='tracked'||(int)$product['stock_quantity']>0);$available=$selected?$selected['available']:($product['variants']?(bool)array_filter($product['variants'],static fn(array $v):bool=>$v['available']):$baseAvailable);$breadcrumbs=$this->productBreadcrumbs($product['categories']);$canonical=$this->absolute('/product/'.$product['slug']);$desc=(string)($product['seo_description']?:$product['short_description']?:$this->plainDescription($product['description']));$schema=$this->productSchema($product,$canonical,$breadcrumbs);
-        return $this->html('product',['title'=>$product['seo_title']?:$product['name'],'description'=>$desc,'canonical'=>$canonical,'product'=>$product,'selected'=>$selected,'selectedId'=>$selectedId,'effectivePrice'=>$effectivePrice,'regularPriceCents'=>$regularPriceCents,'available'=>$available,'breadcrumbs'=>$breadcrumbs,'reviews'=>$this->reviews->forProduct((int)$product['id']),'schema'=>$schema],200,$request);
+        return $this->html('product',['title'=>$product['seo_title']?:$product['name'],'description'=>$desc,'canonical'=>$canonical,'product'=>$product,'selected'=>$selected,'selectedId'=>$selectedId,'effectivePrice'=>$effectivePrice,'regularPriceCents'=>$regularPriceCents,'available'=>$available,'breadcrumbs'=>$breadcrumbs,'reviews'=>$this->reviews->forProduct((int)$product['id']),'reviewAuthorName'=>$reviewAuthorName,'schema'=>$schema],200,$request);
     }
 
     public function submitReview(Request $request,array $params): Response
@@ -73,7 +75,7 @@ final class StorefrontController
         if(!$this->cartSessions->validCsrf($request))return Response::json(['error'=>['code'=>'csrf_invalid','message'=>'Заявката изтече. Обновете страницата и опитайте отново.']],419);
         $product=$this->catalog->product((string)$params['slug']);
         if(!$product)return Response::json(['error'=>['code'=>'product_not_found','message'=>'Продуктът не е намерен.']],404);
-        $name=trim((string)($request->form['author_name']??''));$description=trim((string)($request->form['description']??''));
+        $name=$this->signedInReviewAuthor()??trim((string)($request->form['author_name']??''));$description=trim((string)($request->form['description']??''));
         $name=preg_replace('/[\x00-\x1F\x7F]/u','',$name)??'';$description=preg_replace('/\x00/u','',$description)??'';
         $rating=filter_var($request->form['rating']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>5]]);
         if($name===''||mb_strlen($name)>120||$description===''||mb_strlen($description)>3000||$rating===false)return Response::json(['error'=>['code'=>'validation_error','message'=>'Попълнете име, описание и оценка от 1 до 5 звезди. Името е до 120, а описанието до 3000 знака.']],422);
@@ -120,6 +122,17 @@ final class StorefrontController
 
     private function html(string $name,array $data,int $status=200,?Request $request=null): Response
     { $context=$this->cartSessions->start();$cartSummary=$this->cart->summary($context['key']);$data['baseUrl']=$this->baseUrl;$data['view']=$this->view;$data['cartCount']=$cartSummary['count'];$data['cartSubtotalCents']=$cartSummary['subtotal_cents'];$data['headerCategories']=$this->catalog->categories();$data+= (new StoreSettingsRepository($this->db))->shipping();$data['csrfToken']=$context['csrf'];$data['cartFlash']=$this->cartSessions->consumeFlash();$body=$this->view->render($name,$data);$headers=['Content-Type'=>'text/html; charset=utf-8','X-Content-Type-Options'=>'nosniff','Referrer-Policy'=>'strict-origin-when-cross-origin','Cache-Control'=>'private, no-store, max-age=0'];if($request&&$this->isNavigationRequest($request)&&preg_match('/<main\b[^>]*>.*?<\/main>/s',$body,$match)){$headers['X-Page-Title']=rawurlencode((string)($data['title']??'Giftcheta'));$headers['X-Page-Description']=rawurlencode((string)($data['description']??''));$headers['X-Page-Canonical']=rawurlencode((string)($data['canonical']??''));$headers['X-Page-Robots']=!empty($data['noindex'])?'noindex,follow':'index,follow';return new Response($match[0],$status,$headers);}return new Response($body,$status,$headers); }
+
+    private function signedInReviewAuthor(): ?string
+    {
+        $id=filter_var($_SESSION['customer_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if($id===false||$id===null)return null;
+        $query=$this->db->prepare("SELECT first_name,last_name FROM customers WHERE id=? AND status='active' AND deleted_at IS NULL AND password_hash IS NOT NULL LIMIT 1");
+        $query->execute([(int)$id]);
+        $customer=$query->fetch(PDO::FETCH_ASSOC);
+        if(!$customer){unset($_SESSION['customer_id']);return null;}
+        return trim((string)$customer['first_name'].' '.(string)$customer['last_name']);
+    }
     private function isNavigationRequest(Request $request): bool
     { foreach($request->headers as $name=>$value)if(strtolower((string)$name)==='accept'&&str_contains((string)$value,'application/vnd.giftcheta.fragment+html'))return true;return false; }
     private function catalogResultsFragment(array $data): Response

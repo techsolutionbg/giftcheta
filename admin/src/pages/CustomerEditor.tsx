@@ -1,7 +1,8 @@
+import { CloseButton } from '../components/CloseButton'
 import { api, json } from '../lib/api'
 import type { Customer, CustomerAddress, ToastState } from '../types/admin'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { KeyRound, Plus, Trash2, X } from 'lucide-react'
+import { KeyRound, Plus, Trash2 } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { FormField } from '../components/CatalogComponents'
@@ -200,7 +201,7 @@ export function CustomerEditor({ customerId, onClose, onSaved, notify }: { custo
 
   return <><div className="modal-backdrop customer-editor-backdrop" data-state={closing?'closed':'open'} onMouseDown={event=>{if(event.target===event.currentTarget)void close()}}>
     <section className="small-modal customer-editor-dialog" data-state={closing?'closed':'open'} role="dialog" aria-modal="true" aria-labelledby="customer-editor-title">
-      <header className="editor-header customer-editor-header"><div><h2 id="customer-editor-title">{isNew?'Създаване на клиент':'Редакция на клиент'}</h2>{!isNew&&<p>{form.first_name} {form.last_name}</p>}</div><div className="customer-editor-header-actions">{!isNew&&<button type="button" className="outline-button tiny customer-header-address-button" onClick={openAddressManager} disabled={busy}><Plus size={15}/> Добави адрес</button>}<button type="button" className="icon-button editor-close-button" title="Затвори редактора" aria-label="Затвори редактора" onClick={()=>void close()}><X size={19}/></button></div></header>
+      <header className="editor-header customer-editor-header"><div><h2 id="customer-editor-title">{isNew?'Създаване на клиент':'Редакция на клиент'}</h2>{!isNew&&<p>{form.first_name} {form.last_name}</p>}</div><div className="customer-editor-header-actions">{!isNew&&<button type="button" className="outline-button tiny customer-header-address-button" onClick={openAddressManager} disabled={busy}><Plus size={15}/> Добави адрес</button>}<CloseButton className="editor-close-button" title="Затвори редактора" aria-label="Затвори редактора" onClick={()=>void close()}/></div></header>
       <div className="customer-editor-scroll">
     {busy?<div className="loading-state"><span className="spinner"/> Зареждаме клиента…</div>:<>
       {error&&<div className="form-error" role="alert">{error}</div>}
@@ -223,7 +224,7 @@ export function CustomerEditor({ customerId, onClose, onSaved, notify }: { custo
   </div>
   {addressesOpen&&createPortal(<div className="modal-backdrop customer-address-dialog-backdrop" data-state={addressesClosing?'closed':'open'} onMouseDown={event=>{if(event.target===event.currentTarget)void closeAddressManager()}}>
     <section className="small-modal customer-address-dialog" data-state={addressesClosing?'closed':'open'} role="dialog" aria-modal="true" aria-labelledby="customer-address-title">
-      <header className="editor-header customer-address-dialog-header"><div><h2 id="customer-address-title">Адреси</h2><p>Адреси за клиента {form.first_name} {form.last_name}</p></div><button type="button" className="icon-button editor-close-button" title="Затвори адресите" aria-label="Затвори адресите" onClick={()=>void closeAddressManager()}><X size={19}/></button></header>
+      <header className="editor-header customer-address-dialog-header"><div><h2 id="customer-address-title">Адреси</h2><p>Адреси за клиента {form.first_name} {form.last_name}</p></div><CloseButton className="editor-close-button" title="Затвори адресите" aria-label="Затвори адресите" onClick={()=>void closeAddressManager()}/></header>
       <div className="customer-address-manager-content">
       {addressForm&&<form id="customer-address-form" className="customer-address-dialog-form" onSubmit={saveAddress}><h3>{editingAddressId?'Редакция на адрес':'Нов адрес'}</h3><div className="customer-form-grid">
         <FormField label="Получател" required helpText="Името на получателя на адреса."><input value={addressForm!.recipient_name} onChange={event=>setAddressValue('recipient_name',event.target.value)} maxLength={160} required/></FormField>

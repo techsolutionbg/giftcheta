@@ -1,5 +1,6 @@
 <?php
 $image=$view->image($item['image_path']??null);
+$hoverImage=$view->image($item['hover_image_path']??null);
 $price=(float)($item['public_price']??$item['sale_price']??$item['price']);
 $regularPublicPrice=(float)($item['regular_public_price']??$item['price']??0);
 $hasVariants=(bool)($item['has_active_variants']??false);
@@ -14,10 +15,10 @@ $favoriteJson=json_encode($favoriteProduct,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED
 <article class="product-card">
   <div class="product-card-media">
     <a href="/product/<?= $view->e($item['slug']) ?>" aria-label="<?= $view->e($item['name']) ?>">
-      <?php if($image): ?><img src="<?= $view->e($image) ?>" alt="<?= $view->e($item['image_alt']?:$item['name']) ?>" loading="lazy"><?php else: ?><div class="image-placeholder" aria-hidden="true"></div><?php endif; ?>
+      <?php if($image): ?><img class="product-card-main-image" src="<?= $view->e($image) ?>" alt="<?= $view->e($item['image_alt']?:$item['name']) ?>" loading="lazy"><?php if($hoverImage): ?><img class="product-card-hover-image" src="<?= $view->e($hoverImage) ?>" alt="" aria-hidden="true" loading="lazy"><?php endif; ?><?php else: ?><div class="image-placeholder" aria-hidden="true"></div><?php endif; ?>
     </a>
     <span class="product-card-promo" data-card-promo <?= $onSale?'':'hidden' ?>><?php if($onSale): ?>Спестявате <?= $view->e($view->money($savedCents/100)) ?> · <?= $discountPercent ?>%<?php endif; ?></span>
-    <button class="product-card-favorite" type="button" data-favorite-toggle aria-pressed="false" aria-label="Добави продукта в любими" data-favorite-product="<?= $view->e($favoriteJson?:'{}') ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button>
+    <button class="product-card-favorite" type="button" data-favorite-toggle aria-pressed="false" aria-label="Добави продукта в любими" data-favorite-product="<?= $view->e($favoriteJson?:'{}') ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg></button><button class="product-card-quick-preview" type="button" data-quick-view-trigger aria-label="Бърз преглед" title="Бърз преглед"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.5"/><path d="m16 16 4.5 4.5M10.8 7.8v6m-3-3h6"/></svg><span>Бърз преглед</span></button>
   </div>
   <div class="product-card-body">
     <h3><a href="/product/<?= $view->e($item['slug']) ?>"><?= $view->e($item['name']) ?></a></h3>
@@ -45,7 +46,6 @@ $favoriteJson=json_encode($favoriteProduct,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED
           <button class="product-card-add-button" type="submit" aria-label="Добави в количката" title="Добави в количката"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 1.9-1.4L22 8H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M12 5v6m-3-3h6"/></svg><span class="product-card-add-label">Добави в количката</span><span class="product-card-add-spinner" aria-hidden="true"></span></button><span class="product-card-add-feedback" role="status" aria-live="polite" hidden></span>
         </form>
       <?php endif; ?>
-      <button class="product-card-quick-preview" type="button" data-quick-view-trigger aria-label="Бърз преглед" title="Бърз преглед"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.5"/><path d="m16 16 4.5 4.5M10.8 7.8v6m-3-3h6"/></svg><span>Бърз преглед</span></button>
     </div>
   </div>
 </article>

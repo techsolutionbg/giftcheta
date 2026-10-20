@@ -1,3 +1,4 @@
+import { CloseButton } from '../components/CloseButton'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, json } from '../lib/api'
@@ -10,7 +11,7 @@ import { SearchField } from '../components/SearchField'
 import { MoneyInput } from '../components/MoneyInput'
 import { Dropdown } from '../components/Dropdown'
 import { SelectionControl } from '../components/SelectionControl'
-import { Plus, Trash2, X } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 
 type DraftLine = { key: string; product: ProductDetails; variantId: string; quantity: string; values: Record<number,string> }
 type ContactForm = { first_name: string; last_name: string; email: string; phone: string }
@@ -100,7 +101,7 @@ export function OrderCreateDialog({ onClose, notify }: { onClose: () => void; no
 
   return <div className="modal-backdrop order-dialog-backdrop" data-state={closing?'closed':'open'} onMouseDown={event=>{if(event.target===event.currentTarget&&!saving){setClosing(true);window.setTimeout(onClose,240)}}}>
     <section className="small-modal order-create-dialog" data-state={closing?'closed':'open'} role="dialog" aria-modal="true" aria-labelledby="order-create-title">
-      <header className="editor-header order-dialog-header"><div><span className="eyebrow">АДМИНИСТРАЦИЯ / ПОРЪЧКИ</span><h2 id="order-create-title">Нова поръчка</h2></div><button type="button" className="icon-button editor-close-button" aria-label="Затвори" onClick={()=>{if(!saving){setClosing(true);window.setTimeout(onClose,240)}}}><X size={19}/></button></header>
+      <header className="editor-header order-dialog-header"><div><span className="eyebrow">АДМИНИСТРАЦИЯ / ПОРЪЧКИ</span><h2 id="order-create-title">Нова поръчка</h2></div><CloseButton className="editor-close-button" aria-label="Затвори" onClick={()=>{if(!saving){setClosing(true);window.setTimeout(onClose,240)}}}/></header>
       <form onSubmit={event=>void submit(event)} className="editor-form order-create-form">
         <div className="editor-scroll order-create-scroll">
           {error&&<div className="form-error" role="alert">{error}</div>}

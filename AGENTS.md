@@ -8,3 +8,5 @@
 - Add versioned SQL migrations; MySQL DDL is not assumed transactional. Inspect partial failures before retrying.
 - Do not introduce product/order/admin business logic until requested. Keep dependencies small and justified.
 - Document commands that actually work and do not claim checks passed unless run.
+
+- Keep all storefront and admin text at regular font weight (400); do not use bold or semibold text anywhere in the project.

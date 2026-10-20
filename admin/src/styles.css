@@ -573,9 +573,10 @@ html:not(.dark) .rich-text-block-menu{box-shadow:0 8px 24px rgb(24 24 24 / 14%)}
 .product-image-card{min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
 .product-image-card.is-primary{border-color:var(--purple);box-shadow:0 0 0 2px color-mix(in srgb,var(--purple) 18%,transparent)}
 .product-image-card>img{display:block;width:100%;height:142px;object-fit:cover;background:var(--paper)}
-.product-image-card-actions{min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px}
+.product-image-card-actions{min-height:44px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;padding:6px}
 .product-image-primary-badge{display:inline-flex;align-items:center;gap:4px;padding:5px 6px;border-radius:6px;background:var(--purple-soft);color:var(--purple);font-size:11px;white-space:nowrap}
 .product-image-card-actions .outline-button{min-height:29px;padding:6px 8px;font-size:12px}
+.product-image-hover-badge{display:inline-flex;align-items:center;gap:4px;min-height:29px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font-size:11px;white-space:nowrap;cursor:pointer}.product-image-hover-badge:disabled{opacity:.6;cursor:wait}
 .product-image-card-actions .icon-button{flex:none}
 @media(max-width:560px){.product-image-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.product-image-card>img{height:120px}.product-image-dropzone{min-height:160px}}
 html:not(.dark) .icon-button,html:not(.dark) .mobile-menu,html:not(.dark) .row-actions button,html:not(.dark) .table-pagination button,html:not(.dark) .order-button,html:not(.dark) .rich-text-toolbar-button,html:not(.dark) .field-help-trigger{background:#e5e7eb;border-color:#d1d5db;color:#374151;box-shadow:none}
@@ -971,3 +972,7 @@ html:not(.dark) .icon-button:hover,html:not(.dark) .action-menu-trigger:hover,ht
 @media(max-width:760px){.banner-admin-row{align-items:flex-start;flex-wrap:wrap}.banner-admin-row>img{width:126px;height:82px;flex-basis:126px}.banner-admin-copy{flex:1 1 calc(100% - 150px)}.banner-admin-actions{width:100%;justify-content:flex-end}.banner-editor-grid{grid-template-columns:1fr}.banner-editor-form{padding-inline:16px}.banner-editor-form>.editor-footer{margin-inline:-16px;padding-inline:16px}}
 
 .discount-codes-page{display:flex;flex-direction:column}.discount-code-editor{width:min(680px,calc(100% - 26px));max-height:min(90vh,900px);display:flex;flex-direction:column}.discount-code-editor>.editor-header{flex:none}.discount-code-form{display:grid;gap:2px;overflow:auto;padding:18px 24px 0}.discount-code-form .two-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.discount-code-active{display:flex;align-items:center;gap:9px;margin:8px 0 15px;color:var(--ink);font-size:var(--type-ui)}.discount-code-active input{width:17px;height:17px;accent-color:var(--accent)}.discount-code-form>.editor-footer{position:sticky;bottom:0;margin:0 -24px;padding:14px 24px;background:var(--panel);border-top:1px solid var(--line)}@media(max-width:560px){.discount-code-form{padding-inline:16px}.discount-code-form .two-cols{grid-template-columns:1fr;gap:0}.discount-code-form>.editor-footer{margin-inline:-16px;padding-inline:16px}}
+
+/* Project typography rule: keep every text weight regular. */
+*,*::before,*::after{font-weight:400!important}
+@import url('/assets/site-close-button.css');

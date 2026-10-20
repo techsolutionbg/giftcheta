@@ -1,8 +1,9 @@
+import { CloseButton } from '../components/CloseButton'
 import { api, json } from '../lib/api'
 import type { Category } from '../types/admin'
 import { useRef, useState } from 'react'
 import type * as React from 'react'
-import { Maximize2, X } from 'lucide-react'
+import { Maximize2 } from 'lucide-react'
 import { FormField } from '../components/CatalogComponents'
 import { FieldHelp } from '../components/FieldHelp'
 import { SelectionControl } from '../components/SelectionControl'
@@ -57,7 +58,7 @@ export function CategoryEditor({category,categories,onClose,onSave}:{category:Ca
 
   return <div className="modal-backdrop" data-state={closing?'closed':'open'} onMouseDown={event=>{if(event.target===event.currentTarget)void close()}}>
     <div className="small-modal category-editor-modal" data-state={closing?'closed':'open'}>
-      <header className="editor-header"><div><h2>{existing?'Редакция на категория':'Създаване на категория'}</h2></div><button type="button" className="icon-button editor-close-button" title="Затвори редактора" aria-label="Затвори редактора" onClick={()=>void close()}><X size={18}/></button></header>
+      <header className="editor-header"><div><h2>{existing?'Редакция на категория':'Създаване на категория'}</h2></div><CloseButton className="editor-close-button" title="Затвори редактора" aria-label="Затвори редактора" onClick={()=>void close()}/></header>
       <form className="category-form" onSubmit={submit}>
         <div className="category-form-grid">
           <FormField label="Име" required helpText="Името на категорията, което ще се показва в каталога."><input value={form.name} onChange={event=>setForm({...form,name:event.target.value})} required maxLength={160}/></FormField>

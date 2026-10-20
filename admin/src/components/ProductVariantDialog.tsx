@@ -1,7 +1,7 @@
+import { CloseButton } from './CloseButton'
 import { useRef, useState } from 'react'
 import type * as React from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
 import { api, json } from '../lib/api'
 import { MoneyInput } from './MoneyInput'
 import { FormField } from './CatalogComponents'
@@ -59,7 +59,7 @@ export function ProductVariantDialog({ productId, variant, onClose, onSaved }: {
 
   return createPortal(<div className="modal-backdrop variant-dialog-backdrop" data-state={closing ? 'closed' : 'open'} onMouseDown={event => { if (event.target === event.currentTarget) void close() }}>
     <section className="small-modal variant-editor-dialog" data-state={closing ? 'closed' : 'open'} role="dialog" aria-modal="true" aria-labelledby="variant-editor-title">
-      <header className="editor-header"><div><h2 id="variant-editor-title">{variant ? 'Редакция на вариант' : 'Нов вариант'}</h2><p>{variant?.name || 'Добавете опция и складова наличност.'}</p></div><button type="button" className="icon-button editor-close-button" aria-label="Затвори" onClick={() => void close()}><X size={19}/></button></header>
+      <header className="editor-header"><div><h2 id="variant-editor-title">{variant ? 'Редакция на вариант' : 'Нов вариант'}</h2><p>{variant?.name || 'Добавете опция и складова наличност.'}</p></div><CloseButton className="editor-close-button" aria-label="Затвори" onClick={() => void close()}/></header>
       <form className="variant-editor-form" onSubmit={submit}>
         <main className="variant-editor-content">
           <div className="two-cols"><FormField label="Цвят" helpText="Името на цветния вариант, което ще вижда клиентът."><input value={color} onChange={event => setColor(event.target.value)} placeholder="Напр. Розов"/></FormField><FormField label="Размер" helpText="Размерът на този вариант, ако е приложимо."><input value={size} onChange={event => setSize(event.target.value)} placeholder="Напр. M"/></FormField></div>

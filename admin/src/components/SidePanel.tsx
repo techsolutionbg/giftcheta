@@ -1,8 +1,8 @@
+import { CloseButton } from './CloseButton'
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import * as React from 'react'
 import './SidePanel.css'
-import { X } from 'lucide-react'
 
 export type SidePanelSide = 'top' | 'right' | 'bottom' | 'left'
 
@@ -123,7 +123,7 @@ export function SidePanel({
               <h2 id={titleId}>{title}</h2>
               {description && <p>{description}</p>}
             </div>
-            <button type="button" className="icon-button" title="Затвори панела" aria-label="Затвори панела" onClick={() => setOpen(false)}><X size={18}/></button>
+            <CloseButton title="Затвори панела" aria-label="Затвори панела" onClick={() => setOpen(false)}/>
           </header>
           <div className="side-panel-content">{children}</div>
         </section>
