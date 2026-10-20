@@ -7,7 +7,7 @@ $pageShowFilterButton = (bool) ($pageShowFilterButton ?? $pageShowFilter);
 ?>
 <header class="store-page-heading<?= $pageShowFilter ? ' store-page-heading-catalog' : '' ?>">
   <div class="store-page-heading-main">
-    <h1 id="store-page-title"><?= $view->e($pageHeading) ?></h1>
+    <h1 id="store-page-title"><?= $view->e($pageHeading) ?><?php if ($pageShowFilter): ?><span class="catalog-heading-count" data-catalog-heading-count> (<?= (int)($total ?? 0) ?>)</span><?php endif; ?></h1>
     <?php if ($pageBreadcrumbs): ?>
       <nav class="store-page-breadcrumbs" aria-label="Навигация">
         <?php foreach ($pageBreadcrumbs as $index => $crumb): ?>
@@ -27,6 +27,7 @@ $pageShowFilterButton = (bool) ($pageShowFilterButton ?? $pageShowFilter);
 <style>
 .store-page-heading-catalog{display:flex;align-items:center;justify-content:center;gap:28px;margin:0 auto 20px;text-align:center}
 .store-page-heading-catalog .store-page-heading-main{display:grid;justify-items:center;gap:9px;min-width:0}
+.catalog-heading-count{display:inline}
 .store-page-heading-catalog .store-page-breadcrumbs{justify-content:center}
 .store-page-heading-catalog .store-page-heading-side{display:flex;align-items:center;justify-content:flex-end;gap:22px;flex:none}
 .store-page-heading-catalog .store-page-heading-meta{margin:0;white-space:nowrap}
@@ -34,6 +35,7 @@ $pageShowFilterButton = (bool) ($pageShowFilterButton ?? $pageShowFilter);
 .catalog-filter-button:hover{border-color:#dcaab5;background:#fff8f9;transform:translateY(-1px)}
 .catalog-filter-button:focus-visible{outline:3px solid #e94a7040;outline-offset:2px}
 .catalog-filter-button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
 @media(max-width:600px){.store-page-heading-catalog{align-items:flex-start;gap:14px}.store-page-heading-catalog .store-page-heading-side{gap:12px}.catalog-filter-button{min-height:38px;padding:0 11px;font-size:.86rem}}
 @media(max-width:430px){.store-page-heading-catalog{flex-wrap:wrap}.store-page-heading-catalog .store-page-heading-side{width:100%;justify-content:flex-start}.store-page-heading-catalog .store-page-heading-main{width:100%}}
 </style>

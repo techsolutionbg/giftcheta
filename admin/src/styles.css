@@ -923,13 +923,24 @@ html:not(.dark) .icon-button:hover,html:not(.dark) .action-menu-trigger:hover,ht
 .variant-nested-row>.icon-button.compact{width:40px;height:40px;min-width:40px}
 @media(max-width:760px){.variant-nested-row{display:flex;flex-wrap:wrap;gap:10px;padding-inline:12px}.variant-image-picker{width:68px;flex:0 0 68px}.variant-row-details{flex:1 1 calc(100% - 90px)}.variant-nested-row>span,.variant-nested-row>.outline-button.tiny,.variant-inventory-slot,.variant-nested-row>.icon-button.compact{margin-top:6px}.variant-inventory-slot{min-width:100px}.variant-nested-row>.icon-button.compact{margin-left:auto}}
 
-.product-editor-dialog>.editor-tabs{margin:0 22px;padding:0;border:1px solid var(--line);border-radius:9px}
-.product-editor-dialog .editor-scroll{padding-top:0}
+.product-editor-dialog>.editor-tabs{margin:18px 22px 0!important;padding:0;border:1px solid var(--line);border-radius:9px}
+.product-editor-dialog .editor-scroll{display:flex;flex-direction:column;gap:16px;padding-top:18px}
+.product-editor-dialog .editor-scroll>*{margin-block:0}
+.product-editor-dialog .editor-scroll>.two-cols{gap:16px}
+.product-editor-dialog .editor-scroll>.two-cols>.form-field{margin-bottom:0}
 .product-editor-dialog .editor-scroll>.nested-list{margin-top:0}
+.parameter-editor-note{margin:0 0 16px;color:var(--muted);font-size:14px;line-height:1.5}
+.parameter-editor-list{display:grid;gap:12px}
+.parameter-editor-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) 40px;align-items:end;gap:12px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.parameter-editor-row .form-field{min-width:0;margin:0}
+.parameter-editor-row>.icon-button{width:40px;height:40px}
+.parameter-editor-add{margin-top:0;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.parameter-editor-add .two-cols{gap:14px}
+.parameter-editor-actions{display:flex;justify-content:flex-end;margin-top:0;padding-top:16px;border-top:1px solid var(--line)}
 .variant-nested-row{grid-template-columns:108px minmax(140px,1fr) auto 40px 40px 40px}
 .variant-inventory-slot{width:40px;min-width:40px;justify-content:center}
 .variant-nested-row>.icon-button.compact{width:40px;height:40px;min-width:40px;padding:0}
-@media(max-width:760px){.product-editor-dialog>.editor-tabs{margin:0 12px;padding:0}.product-editor-dialog .editor-scroll{padding-top:0}}
+@media(max-width:760px){.product-editor-dialog>.editor-tabs{margin:18px 12px 0!important;padding:0}.product-editor-dialog .editor-scroll{padding-top:18px}.parameter-editor-row{grid-template-columns:minmax(0,1fr)}.parameter-editor-row>.icon-button{justify-self:end}.parameter-editor-add .two-cols{grid-template-columns:minmax(0,1fr)}}
 
 .variant-dialog-backdrop{z-index:120;align-items:center;justify-content:center;padding:20px}
 .variant-editor-dialog{width:min(620px,calc(100vw - 32px));max-height:min(760px,calc(100dvh - 40px));display:flex;flex-direction:column;overflow:hidden}

@@ -120,6 +120,9 @@ final class CatalogRepository
     public function product(string $slug): ?array
     { $q=$this->db->prepare("SELECT * FROM products WHERE slug=? AND status='active' AND deleted_at IS NULL LIMIT 1");$q->execute([$slug]);$r=$q->fetch();return $r?:null; }
 
+    public function productParameters(int $id): array
+    { $q=$this->db->prepare('SELECT name,value FROM product_parameters WHERE product_id=? ORDER BY position,id');$q->execute([$id]);return $q->fetchAll(PDO::FETCH_ASSOC); }
+
     public function productImages(int $id): array
     { $q=$this->db->prepare('SELECT file_path,alt_text,is_primary FROM product_images WHERE product_id=? ORDER BY is_primary DESC,position,id');$q->execute([$id]);return $q->fetchAll(); }
 

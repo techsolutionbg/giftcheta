@@ -130,6 +130,7 @@ $router->post('/api/v1/admin/products/bulk', fn (Request $request) => $catalogAp
 $router->post('/api/v1/admin/products', fn (Request $request) => $catalogApi->createProduct($request));
 $router->get('/api/v1/admin/products/{id}', fn (Request $request, $config, array $params) => $catalogApi->product($request, $params));
 $router->patch('/api/v1/admin/products/{id}', fn (Request $request, $config, array $params) => $catalogApi->updateProduct($request, $params));
+$router->put('/api/v1/admin/products/{id}/parameters', fn (Request $request, $config, array $params) => $catalogApi->updateProductParameters($request, $params));
 $router->delete('/api/v1/admin/products/{id}', fn (Request $request, $config, array $params) => $catalogApi->deleteProduct($request, $params));
 $router->post('/api/v1/admin/products/{id}/restore', fn (Request $request, $config, array $params) => $catalogApi->restoreProduct($request, $params));
 $router->delete('/api/v1/admin/products/{id}/permanent', fn (Request $request, $config, array $params) => $catalogApi->permanentlyDeleteProduct($request, $params));

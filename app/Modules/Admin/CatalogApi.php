@@ -165,7 +165,33 @@ final class CatalogApi
         $product['customization_fields'] = $this->rows('SELECT * FROM product_customization_fields WHERE product_id=? ORDER BY position,id', [$id]);
         foreach ($product['customization_fields'] as &$field) { $field['validation_rules'] = $field['validation_rules'] ? json_decode($field['validation_rules'], true) : null; $field['options'] = $field['options'] ? json_decode($field['options'], true) : null; }
         unset($field);
+        $product['parameters'] = $this->rows('SELECT name,value FROM product_parameters WHERE product_id=? ORDER BY position,id', [$id]);
         return Response::json(['data' => $product]);
+    }
+
+    public function updateProductParameters(Request $r, array $p): Response
+    {
+        if ($e = $this->auth->guard($r, 'products.write', true)) return $e;
+        $id = (int) ($p['id'] ?? 0);
+        if (!$this->existsId('products', $id)) return $this->notFound();
+        $parameters = $r->json()['parameters'] ?? null;
+        if (!is_array($parameters) || count($parameters) > 100) return $this->error('validation_error', 'Добавете до 100 параметъра.', 422);
+        $normalized = [];
+        foreach ($parameters as $parameter) {
+            if (!is_array($parameter)) return $this->error('validation_error', 'Всеки параметър трябва да има име и стойност.', 422);
+            $name = trim((string) ($parameter['name'] ?? ''));
+            $value = trim((string) ($parameter['value'] ?? ''));
+            if ($name === '' || $value === '' || mb_strlen($name) > 160 || mb_strlen($value) > 2000) return $this->error('validation_error', 'Името и стойността са задължителни (до 160 и 2000 символа).', 422);
+            $normalized[] = [$name, $value];
+        }
+        $this->db->beginTransaction();
+        try {
+            $this->db->prepare('DELETE FROM product_parameters WHERE product_id=?')->execute([$id]);
+            $insert = $this->db->prepare('INSERT INTO product_parameters (product_id,name,value,position) VALUES (?,?,?,?)');
+            foreach ($normalized as $position => [$name, $value]) $insert->execute([$id, $name, $value, $position]);
+            $this->db->commit();
+        } catch (Throwable $error) { if ($this->db->inTransaction()) $this->db->rollBack(); throw $error; }
+        return Response::json(['data' => ['saved' => count($normalized)]]);
     }
 
     public function createProduct(Request $r): Response
